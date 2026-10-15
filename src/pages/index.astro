@@ -1,11 +1,216 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import Icon from '../components/Icon.astro';
 ---
 
-<Layout>
-	<Welcome />
+<Layout titulo="Tablero" subtitulo="Resumen de producción y pagos del taller.">
+  <div slot="acciones">
+    <a class="boton secundario" href="/partidas">
+      <Icon name="caja" size={16} /> Nueva partida
+    </a>
+    <a class="boton" href="/trabajo">
+      <Icon name="documento" size={16} /> Registrar trabajo
+    </a>
+  </div>
+
+  <div class="rejilla kpi mb-2" id="kpis">
+    <div class="kpi"><div class="kpi-etiqueta">Cargando…</div><div class="kpi-valor">—</div></div>
+  </div>
+
+  <div id="error" class="oculto"></div>
+
+  <div class="tarjeta">
+    <div class="tarjeta-cabecera">
+      <div>
+        <h2>Partidas</h2>
+        <p>Últimas partidas registradas con su avance de mano de obra.</p>
+      </div>
+      <a class="boton sutil pequeno" href="/partidas">Ver todas <Icon name="volver" size={14} /></a>
+    </div>
+    <div class="tarjeta-cuerpo sin-padding">
+      <div class="tabla-envoltura">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Partida</th>
+              <th>Cliente</th>
+              <th>Fecha</th>
+              <th class="num">Paq.</th>
+              <th class="num">Prendas</th>
+              <th class="num">Precio prenda</th>
+              <th class="num">Total partida</th>
+              <th>Avance</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo-partidas">
+            <tr><td colspan="9" class="sin-datos">Cargando partidas…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="rejilla dos mt-3">
+    <div class="tarjeta">
+      <div class="tarjeta-cabecera">
+        <div>
+          <h2>Pendiente por pagar</h2>
+          <p>Mano de obra registrada que aún no se liquida.</p>
+        </div>
+        <a class="boton sutil pequeno" href="/pagos">Ir a pagos</a>
+      </div>
+      <div class="tarjeta-cuerpo sin-padding">
+        <div class="tabla-envoltura">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Trabajador</th>
+                <th class="num">Días</th>
+                <th class="num">Pendiente</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo-pendientes">
+              <tr><td colspan="3" class="sin-datos">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="tarjeta">
+      <div class="tarjeta-cabecera">
+        <div>
+          <h2>Últimos registros</h2>
+          <p>Movimientos más recientes de producción.</p>
+        </div>
+        <a class="boton sutil pequeno" href="/registros">Ver detalle</a>
+      </div>
+      <div class="tarjeta-cuerpo sin-padding">
+        <div class="tabla-envoltura">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Trabajador</th>
+                <th>Operación</th>
+                <th class="num">Importe</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo-registros">
+              <tr><td colspan="4" class="sin-datos">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 </Layout>
+
+<script>
+  import { resumenTablero, listarRegistros } from '../lib/api.js';
+  import { soles, numero, fecha, claseEstadoPartida, estadoPartida } from '../lib/format.js';
+  import { qs, esc, avisoError } from '../lib/ui.js';
+
+  const kpis = qs('#kpis');
+  const cuerpoPartidas = qs('#cuerpo-partidas');
+  const cuerpoPendientes = qs('#cuerpo-pendientes');
+  const cuerpoRegistros = qs('#cuerpo-registros');
+  const cajaError = qs('#error');
+
+  function tarjetaKpi({ etiqueta, valor, pie, resaltado = false }) {
+    return `
+      <div class="kpi ${resaltado ? 'resaltado' : ''}">
+        <div class="kpi-etiqueta">${esc(etiqueta)}</div>
+        <div class="kpi-valor">${esc(valor)}</div>
+        ${pie ? `<div class="kpi-pie">${esc(pie)}</div>` : ''}
+      </div>`;
+  }
+
+  function filaPartida(p) {
+    const total = Number(p.total_partida ?? 0);
+    const registrado = Number(p.monto_registrado ?? 0);
+    const avance = total > 0 ? Math.min(100, Math.round((registrado / total) * 100)) : 0;
+
+    return `
+      <tr>
+        <td>
+          <a class="negrita" href="/partidas/detalle?id=${esc(p.id)}">${esc(p.codigo)}</a>
+          <div class="texto-suave texto-pequeno">${esc(p.descripcion ?? '')}</div>
+        </td>
+        <td>${esc(p.cliente ?? '—')}</td>
+        <td>${esc(fecha(p.fecha))}</td>
+        <td class="num">${esc(numero(p.num_paquetes))}</td>
+        <td class="num">${esc(numero(p.total_prendas))}</td>
+        <td class="num">${esc(soles(p.precio_prenda))}</td>
+        <td class="num negrita">${esc(soles(total))}</td>
+        <td style="min-width:140px">
+          <div class="barra-avance"><span style="width:${avance}%"></span></div>
+          <div class="texto-suave texto-pequeno mt-1">${avance}% · ${esc(soles(registrado))}</div>
+        </td>
+        <td><span class="chip ${claseEstadoPartida(p.estado)}">${esc(estadoPartida(p.estado))}</span></td>
+      </tr>`;
+  }
+
+  function filaPendiente(t) {
+    return `
+      <tr>
+        <td>
+          <a href="/pagos?trabajador=${esc(t.id)}">${esc(t.nombre)}</a>
+        </td>
+        <td class="num">${esc(numero(t.dias_trabajados))}</td>
+        <td class="num negrita">${esc(soles(t.monto_pendiente))}</td>
+      </tr>`;
+  }
+
+  function filaRegistro(r) {
+    return `
+      <tr>
+        <td>${esc(fecha(r.fecha))}</td>
+        <td>${esc(r.trabajador)}</td>
+        <td>
+          ${esc(r.operacion)}
+          <div class="texto-suave texto-pequeno">Partida ${esc(r.partida_codigo)} · Paq. ${esc(r.paquete_numero)} (${esc(r.paquete_talla)}) · ${esc(numero(r.cantidad))} u.</div>
+        </td>
+        <td class="num negrita">${esc(soles(r.subtotal))}</td>
+      </tr>`;
+  }
+
+  async function cargar() {
+    try {
+      const [resumen, registros] = await Promise.all([resumenTablero(), listarRegistros({ limite: 8 })]);
+      const { kpis: k, partidas, trabajadores } = resumen;
+
+      kpis.innerHTML = [
+        tarjetaKpi({ etiqueta: 'Partidas activas', valor: numero(k.partidasActivas), pie: `${numero(k.totalPartidas)} partidas en total` }),
+        tarjetaKpi({ etiqueta: 'Prendas en proceso', valor: numero(k.prendasEnProceso), pie: 'Según partidas activas' }),
+        tarjetaKpi({ etiqueta: 'Mano de obra registrada', valor: soles(k.manoObraRegistrada), pie: 'Todo el histórico' }),
+        tarjetaKpi({ etiqueta: 'Pendiente por pagar', valor: soles(k.pendientePorPagar), pie: `${soles(k.pagadoHistorico)} ya pagado`, resaltado: true }),
+      ].join('');
+
+      const recientes = partidas.slice(0, 8);
+      cuerpoPartidas.innerHTML = recientes.length
+        ? recientes.map(filaPartida).join('')
+        : '<tr><td colspan="9" class="sin-datos">Todavía no hay partidas. Crea la primera desde la sección Partidas.</td></tr>';
+
+      const conPendiente = trabajadores
+        .filter((t) => Number(t.monto_pendiente) > 0)
+        .sort((a, b) => Number(b.monto_pendiente) - Number(a.monto_pendiente));
+
+      cuerpoPendientes.innerHTML = conPendiente.length
+        ? conPendiente.map(filaPendiente).join('')
+        : '<tr><td colspan="3" class="sin-datos">No hay pagos pendientes.</td></tr>';
+
+      cuerpoRegistros.innerHTML = registros.length
+        ? registros.map(filaRegistro).join('')
+        : '<tr><td colspan="4" class="sin-datos">Aún no se registra trabajo.</td></tr>';
+    } catch (error) {
+      avisoError(error);
+      cajaError.className = 'alerta peligro mb-2';
+      cajaError.innerHTML = `<strong>No se pudieron cargar los datos.</strong><div>${esc(error.message)}</div>`;
+      cuerpoPartidas.innerHTML = '<tr><td colspan="9" class="sin-datos">Error al cargar.</td></tr>';
+    }
+  }
+
+  cargar();
+</script>

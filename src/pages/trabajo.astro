@@ -1,0 +1,441 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
+---
+
+<Layout titulo="Registro diario" subtitulo="Anota el trabajo hecho por cada trabajador y calcula el pago automáticamente.">
+  <div slot="acciones">
+    <a class="boton secundario" href="/registros">
+      <Icon name="lista" size={16} /> Ver todos los registros
+    </a>
+  </div>
+
+  <div class="tarjeta">
+    <div class="tarjeta-cabecera">
+      <div>
+        <h2>Nuevo registro de trabajo</h2>
+        <p>Elige fecha, trabajador, partida y paquete. Los precios se toman de la partida.</p>
+      </div>
+    </div>
+    <div class="tarjeta-cuerpo">
+      <div class="formulario-rejilla">
+        <div class="campo">
+          <label for="fecha">Fecha del trabajo</label>
+          <input type="date" id="fecha" />
+        </div>
+        <div class="campo">
+          <label for="trabajador">Trabajador</label>
+          <select id="trabajador"><option value="">Cargando…</option></select>
+        </div>
+        <div class="campo">
+          <label for="partida">Partida</label>
+          <select id="partida"><option value="">Cargando…</option></select>
+        </div>
+        <div class="campo">
+          <label for="paquete">Paquete</label>
+          <select id="paquete" disabled><option value="">Elige una partida</option></select>
+        </div>
+      </div>
+
+      <div id="resumen-partida" class="fila mt-2"></div>
+
+      <div class="bloque mt-2">
+        <div class="bloque-cabecera">
+          <span>Operaciones de la partida</span>
+          <span class="fila">
+            <button type="button" class="boton sutil pequeno" id="llenar-todo">Llenar con la cantidad del paquete</button>
+            <button type="button" class="boton sutil pequeno" id="vaciar">Vaciar</button>
+          </span>
+        </div>
+        <div class="tabla-envoltura">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Operación</th>
+                <th class="num">Precio por prenda</th>
+                <th class="num">Cantidad hecha</th>
+                <th class="num">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo-operaciones">
+              <tr><td colspan="4" class="sin-datos">Elige una partida para ver sus operaciones.</td></tr>
+            </tbody>
+            <tfoot id="pie-operaciones" class="oculto">
+              <tr>
+                <td colspan="3">Total a pagar por este registro</td>
+                <td class="num" id="total-registro">S/ 0.00</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="campo mt-2">
+        <label for="notas">Notas (opcional)</label>
+        <input type="text" id="notas" placeholder="Observaciones del lote, merma, etc." />
+      </div>
+
+      <div class="fila separado mt-3">
+        <span class="pista" id="pista-guardar"></span>
+        <button type="button" class="boton" id="guardar">
+          <Icon name="check" size={16} /> Guardar registro
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tarjeta">
+    <div class="tarjeta-cabecera">
+      <div>
+        <h2>Registros del día <span class="texto-suave" id="titulo-dia"></span></h2>
+        <p>Puedes borrar una línea si te equivocaste.</p>
+      </div>
+    </div>
+    <div class="tarjeta-cuerpo sin-padding">
+      <div class="tabla-envoltura">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Trabajador</th>
+              <th>Partida</th>
+              <th>Paquete</th>
+              <th>Operación</th>
+              <th class="num">Cant.</th>
+              <th class="num">Importe</th>
+              <th class="num">Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo-dia">
+            <tr><td colspan="8" class="sin-datos">Cargando…</td></tr>
+          </tbody>
+          <tfoot id="pie-dia" class="oculto">
+            <tr>
+              <td colspan="5">Total del día</td>
+              <td class="num" id="total-dia">S/ 0.00</td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { listarTrabajadores, listarPartidas, listarPartidaOperaciones, listarPaquetes, registrarTrabajo, listarRegistros, eliminarRegistro } from '../lib/api.js';
+  import { soles, precioUnitario, numero, hoyISO, fecha } from '../lib/format.js';
+  import { qs, esc, toast, avisoError, confirmar, cargando } from '../lib/ui.js';
+
+  const elFecha = qs('#fecha');
+  const elTrabajador = qs('#trabajador');
+  const elPartida = qs('#partida');
+  const elPaquete = qs('#paquete');
+  const elNotas = qs('#notas');
+  const cuerpoOperaciones = qs('#cuerpo-operaciones');
+  const pieOperaciones = qs('#pie-operaciones');
+  const totalRegistro = qs('#total-registro');
+  const resumenPartida = qs('#resumen-partida');
+  const cuerpoDia = qs('#cuerpo-dia');
+  const pieDia = qs('#pie-dia');
+  const totalDia = qs('#total-dia');
+  const tituloDia = qs('#titulo-dia');
+  const botonGuardar = qs('#guardar');
+  const pistaGuardar = qs('#pista-guardar');
+
+  const estado = {
+    trabajadores: [],
+    partidas: [],
+    operaciones: [],
+    paquetes: [],
+    paqueteActual: null,
+  };
+
+  function opciones(select, lista, { placeholder = 'Selecciona…', valor = (x) => x.id, texto = (x) => x.nombre } = {}) {
+    select.innerHTML =
+      `<option value="">${esc(placeholder)}</option>` +
+      lista.map((x) => `<option value="${esc(valor(x))}">${esc(texto(x))}</option>`).join('');
+  }
+
+  // -------------------------------------------------------------- catálogos
+
+  async function cargarCatalogos() {
+    const [trabajadores, partidas] = await Promise.all([
+      listarTrabajadores({ soloActivos: true }),
+      listarPartidas(),
+    ]);
+
+    estado.trabajadores = trabajadores;
+    estado.partidas = partidas.filter((p) => p.estado !== 'anulada');
+
+    opciones(elTrabajador, estado.trabajadores, { placeholder: 'Elige al trabajador' });
+    opciones(elPartida, estado.partidas, {
+      placeholder: 'Elige la partida',
+      texto: (p) => `Partida ${p.codigo}${p.descripcion ? ' — ' + p.descripcion : ''}`,
+    });
+
+    const params = new URLSearchParams(location.search);
+    const partidaParam = params.get('partida');
+    const trabajadorParam = params.get('trabajador');
+    if (partidaParam && estado.partidas.some((p) => p.id === partidaParam)) elPartida.value = partidaParam;
+    if (trabajadorParam && estado.trabajadores.some((t) => t.id === trabajadorParam)) elTrabajador.value = trabajadorParam;
+
+    if (elPartida.value) await alCambiarPartida(params.get('paquete'));
+  }
+
+  // ----------------------------------------------------------- selecciones
+
+  async function alCambiarPartida(paqueteId = null) {
+    const partidaId = elPartida.value;
+    estado.operaciones = [];
+    estado.paquetes = [];
+    estado.paqueteActual = null;
+    elPaquete.disabled = true;
+    resumenPartida.innerHTML = '';
+    cuerpoOperaciones.innerHTML = '<tr><td colspan="4" class="sin-datos">Cargando…</td></tr>';
+    pieOperaciones.classList.add('oculto');
+
+    if (!partidaId) {
+      elPaquete.innerHTML = '<option value="">Elige una partida</option>';
+      cuerpoOperaciones.innerHTML = '<tr><td colspan="4" class="sin-datos">Elige una partida para ver sus operaciones.</td></tr>';
+      return;
+    }
+
+    const [operaciones, paquetes] = await Promise.all([
+      listarPartidaOperaciones(partidaId),
+      listarPaquetes(partidaId),
+    ]);
+
+    estado.operaciones = operaciones;
+    estado.paquetes = paquetes;
+
+    const partida = estado.partidas.find((p) => p.id === partidaId);
+    resumenPartida.innerHTML = `
+      <span class="chip primario">${numero(operaciones.length)} operaciones</span>
+      <span class="chip">${numero(paquetes.length)} paquetes</span>
+      <span class="chip info">Precio prenda: ${soles(partida?.precio_prenda ?? 0)}</span>
+      <span class="chip exito">Total partida: ${soles(partida?.total_partida ?? 0)}</span>`;
+
+    opciones(elPaquete, paquetes, {
+      placeholder: 'Elige el paquete',
+      texto: (q) => `Paquete ${q.numero} — Talla ${q.talla} (${q.cantidad} prendas)`,
+    });
+    elPaquete.disabled = paquetes.length === 0;
+
+    if (paquetes.length === 0) {
+      cuerpoOperaciones.innerHTML = '<tr><td colspan="4" class="sin-datos">Esta partida todavía no tiene paquetes.</td></tr>';
+      elPaquete.innerHTML = '<option value="">Sin paquetes</option>';
+      return;
+    }
+
+    if (paqueteId && paquetes.some((q) => q.id === paqueteId)) elPaquete.value = paqueteId;
+    else elPaquete.value = paquetes[0].id;
+
+    alCambiarPaquete();
+  }
+
+  function alCambiarPaquete() {
+    estado.paqueteActual = estado.paquetes.find((q) => q.id === elPaquete.value) ?? null;
+    renderOperaciones();
+    llenarTodo();
+  }
+
+  function renderOperaciones() {
+    if (estado.operaciones.length === 0) {
+      cuerpoOperaciones.innerHTML = '<tr><td colspan="4" class="sin-datos">Esta partida no tiene operaciones registradas.</td></tr>';
+      pieOperaciones.classList.add('oculto');
+      return;
+    }
+
+    cuerpoOperaciones.innerHTML = estado.operaciones
+      .map(
+        (op) => `
+        <tr data-operacion="${esc(op.id)}" data-precio="${Number(op.precio)}">
+          <td class="negrita">${esc(op.nombre)}</td>
+          <td class="num">${esc(precioUnitario(op.precio))}</td>
+          <td class="num"><input type="number" class="cantidad" min="0" step="1" value="0" data-cantidad /></td>
+          <td class="num subtotal">${esc(soles(0))}</td>
+        </tr>`
+      )
+      .join('');
+
+    cuerpoOperaciones.querySelectorAll('[data-cantidad]').forEach((input) => {
+      input.addEventListener('input', recalcular);
+    });
+    pieOperaciones.classList.remove('oculto');
+    recalcular();
+  }
+
+  function recalcular() {
+    let total = 0;
+    let piezas = 0;
+
+    cuerpoOperaciones.querySelectorAll('tr[data-operacion]').forEach((fila) => {
+      const precio = Number(fila.dataset.precio);
+      const cantidad = Number(fila.querySelector('[data-cantidad]').value) || 0;
+      const subtotal = precio * cantidad;
+      fila.querySelector('.subtotal').textContent = soles(subtotal);
+      total += subtotal;
+      piezas += cantidad;
+    });
+
+    totalRegistro.textContent = soles(total);
+    const trabajador = estado.trabajadores.find((t) => t.id === elTrabajador.value);
+    const paquete = estado.paqueteActual;
+
+    pistaGuardar.textContent =
+      trabajador && paquete && piezas > 0
+        ? `${trabajador.nombre} · Partida ${estado.partidas.find((p) => p.id === elPartida.value)?.codigo ?? ''} · Paquete ${paquete.numero} (${paquete.talla}) · ${numero(piezas)} prendas`
+        : 'Completa trabajador, partida, paquete y cantidades.';
+  }
+
+  function llenarTodo() {
+    const cantidad = estado.paqueteActual?.cantidad ?? 0;
+    cuerpoOperaciones.querySelectorAll('[data-cantidad]').forEach((input) => {
+      input.value = cantidad;
+    });
+    recalcular();
+  }
+
+  function vaciar() {
+    cuerpoOperaciones.querySelectorAll('[data-cantidad]').forEach((input) => {
+      input.value = 0;
+    });
+    recalcular();
+  }
+
+  // ---------------------------------------------------------------- guardar
+
+  async function guardar() {
+    const fechaTrabajo = elFecha.value;
+    if (!fechaTrabajo) return toast('Elige la fecha del trabajo.', 'aviso');
+    if (!elTrabajador.value) return toast('Elige al trabajador.', 'aviso');
+    if (!elPartida.value) return toast('Elige la partida.', 'aviso');
+    if (!elPaquete.value) return toast('Elige el paquete.', 'aviso');
+
+    const lineas = [];
+    cuerpoOperaciones.querySelectorAll('tr[data-operacion]').forEach((fila) => {
+      const cantidad = Number(fila.querySelector('[data-cantidad]').value) || 0;
+      if (cantidad > 0) lineas.push({ partida_operacion_id: fila.dataset.operacion, cantidad });
+    });
+
+    if (lineas.length === 0) return toast('Ingresa al menos una cantidad mayor a cero.', 'aviso');
+
+    try {
+      const existentes = await listarRegistros({
+        desde: fechaTrabajo,
+        hasta: fechaTrabajo,
+        trabajadorId: elTrabajador.value,
+        paqueteId: elPaquete.value,
+        limite: 50,
+      });
+
+      if (existentes.length > 0) {
+        const continuar = await confirmar({
+          titulo: 'Ya hay trabajo registrado',
+          mensaje: `Este trabajador ya tiene ${existentes.length} línea(s) registradas en ese paquete para el ${fecha(fechaTrabajo)}. Si continúas se sumarán como un registro nuevo.`,
+          textoAceptar: 'Registrar igualmente',
+        });
+        if (!continuar) return;
+      }
+
+      cargando(botonGuardar, true, 'Guardando…');
+      await registrarTrabajo({
+        fecha: fechaTrabajo,
+        trabajadorId: elTrabajador.value,
+        partidaId: elPartida.value,
+        paqueteId: elPaquete.value,
+        lineas,
+        notas: elNotas.value || null,
+      });
+
+      toast('Registro guardado correctamente.', 'exito');
+      elNotas.value = '';
+      vaciar();
+      await cargarDia();
+    } catch (error) {
+      avisoError(error);
+    } finally {
+      cargando(botonGuardar, false);
+    }
+  }
+
+  // ------------------------------------------------------------ día actual
+
+  async function cargarDia() {
+    const dia = elFecha.value || hoyISO();
+    tituloDia.textContent = `· ${fecha(dia)}`;
+    cuerpoDia.innerHTML = '<tr><td colspan="8" class="sin-datos">Cargando…</td></tr>';
+
+    const registros = await listarRegistros({ desde: dia, hasta: dia, limite: 500 });
+    if (registros.length === 0) {
+      cuerpoDia.innerHTML = '<tr><td colspan="8" class="sin-datos">No hay registros para esta fecha.</td></tr>';
+      pieDia.classList.add('oculto');
+      return;
+    }
+
+    cuerpoDia.innerHTML = registros
+      .map(
+        (r) => `
+        <tr>
+          <td class="negrita">${esc(r.trabajador)}</td>
+          <td>${esc(r.partida_codigo)}</td>
+          <td>${esc(r.paquete_numero)} · ${esc(r.paquete_talla)}</td>
+          <td>${esc(r.operacion)}</td>
+          <td class="num">${esc(numero(r.cantidad))}</td>
+          <td class="num negrita">${esc(soles(r.subtotal))}</td>
+          <td class="num">${r.pago_id ? '<span class="chip exito">Pagado</span>' : '<span class="chip alerta">Pendiente</span>'}</td>
+          <td class="acciones-fila">
+            <button type="button" class="boton icono peligro" data-borrar="${esc(r.id)}" title="Eliminar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </td>
+        </tr>`
+      )
+      .join('');
+
+    const total = registros.reduce((suma, r) => suma + Number(r.subtotal), 0);
+    totalDia.textContent = soles(total);
+    pieDia.classList.remove('oculto');
+
+    cuerpoDia.querySelectorAll('[data-borrar]').forEach((boton) => {
+      boton.addEventListener('click', async () => {
+        const ok = await confirmar({
+          titulo: 'Eliminar registro',
+          mensaje: '¿Seguro que deseas eliminar esta línea de trabajo?',
+          textoAceptar: 'Eliminar',
+          peligro: true,
+        });
+        if (!ok) return;
+        try {
+          await eliminarRegistro(boton.dataset.borrar);
+          toast('Registro eliminado.', 'exito');
+          await cargarDia();
+        } catch (error) {
+          avisoError(error);
+        }
+      });
+    });
+  }
+
+  // ------------------------------------------------------------------ init
+
+  elFecha.value = hoyISO();
+  elFecha.addEventListener('change', cargarDia);
+  elPartida.addEventListener('change', () => alCambiarPartida());
+  elTrabajador.addEventListener('change', recalcular);
+  elPaquete.addEventListener('change', alCambiarPaquete);
+  qs('#llenar-todo').addEventListener('click', llenarTodo);
+  qs('#vaciar').addEventListener('click', vaciar);
+  botonGuardar.addEventListener('click', guardar);
+
+  (async () => {
+    try {
+      await cargarCatalogos();
+      await cargarDia();
+    } catch (error) {
+      avisoError(error);
+      cuerpoOperaciones.innerHTML = `<tr><td colspan="4" class="sin-datos">${esc(error.message)}</td></tr>`;
+    }
+  })();
+</script>

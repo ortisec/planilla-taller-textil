@@ -1,0 +1,210 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
+---
+
+<Layout titulo="Personal" subtitulo="Trabajadores del taller y sus totales de producción y pagos.">
+  <div class="tarjeta">
+    <div class="tarjeta-cabecera">
+      <div>
+        <h2>Nuevo trabajador</h2>
+        <p>Registra a las personas que realizan las operaciones.</p>
+      </div>
+    </div>
+    <div class="tarjeta-cuerpo">
+      <div class="formulario-rejilla">
+        <div class="campo">
+          <label for="nombre">Nombre completo *</label>
+          <input type="text" id="nombre" placeholder="Ej. JOSE ORTIZ" />
+        </div>
+        <div class="campo">
+          <label for="documento">Documento (DNI)</label>
+          <input type="text" id="documento" placeholder="Opcional" />
+        </div>
+        <div class="campo">
+          <label for="telefono">Teléfono</label>
+          <input type="text" id="telefono" placeholder="Opcional" />
+        </div>
+        <div class="campo">
+          <label>&nbsp;</label>
+          <button type="button" class="boton" id="agregar">
+            <Icon name="mas" size={15} /> Agregar trabajador
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tarjeta">
+    <div class="tarjeta-cabecera">
+      <div>
+        <h2>Listado</h2>
+        <p>Edita los datos directamente en la tabla; se guardan al salir del campo.</p>
+      </div>
+      <div class="fila">
+        <input type="search" id="buscar" placeholder="Buscar…" style="max-width:220px" />
+        <label class="casilla texto-pequeno"><input type="checkbox" id="solo-activos" /> Solo activos</label>
+      </div>
+    </div>
+    <div class="tarjeta-cuerpo sin-padding">
+      <div class="tabla-envoltura">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Documento</th>
+              <th>Teléfono</th>
+              <th class="num">Días</th>
+              <th class="num">Registrado</th>
+              <th class="num">Pendiente</th>
+              <th class="num">Activo</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo">
+            <tr><td colspan="8" class="sin-datos">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { listarTrabajadoresResumen, crearTrabajador, actualizarTrabajador, eliminarTrabajador } from '../lib/api.js';
+  import { soles, numero } from '../lib/format.js';
+  import { qs, esc, toast, avisoError, confirmar, cargando } from '../lib/ui.js';
+
+  let trabajadores = [];
+  const cuerpo = qs('#cuerpo');
+
+  function pintar() {
+    const filtro = qs('#buscar').value.trim().toLowerCase();
+    const soloActivos = qs('#solo-activos').checked;
+
+    let lista = trabajadores;
+    if (filtro) {
+      lista = lista.filter(
+        (t) =>
+          t.nombre.toLowerCase().includes(filtro) ||
+          String(t.documento ?? '').toLowerCase().includes(filtro)
+      );
+    }
+    if (soloActivos) lista = lista.filter((t) => t.activo);
+
+    if (lista.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="8" class="sin-datos">No hay trabajadores que coincidan.</td></tr>';
+      return;
+    }
+
+    cuerpo.innerHTML = lista
+      .map(
+        (t) => `
+      <tr data-trabajador="${esc(t.id)}">
+        <td><input type="text" value="${esc(t.nombre)}" data-campo="nombre" /></td>
+        <td><input type="text" value="${esc(t.documento ?? '')}" data-campo="documento" placeholder="—" /></td>
+        <td><input type="text" value="${esc(t.telefono ?? '')}" data-campo="telefono" placeholder="—" /></td>
+        <td class="num ${t.activo ? '' : 'texto-suave'}">${esc(numero(t.dias_trabajados))}</td>
+        <td class="num ${t.activo ? '' : 'texto-suave'}">${esc(soles(t.monto_total))}</td>
+        <td class="num negrita ${Number(t.monto_pendiente) > 0 ? '' : 'texto-suave'}">${esc(soles(t.monto_pendiente))}</td>
+        <td class="num"><input type="checkbox" data-campo="activo" ${t.activo ? 'checked' : ''} /></td>
+        <td class="acciones-fila">
+          <a class="boton icono" href="/registros?trabajador=${esc(t.id)}" title="Ver registros">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </a>
+          <a class="boton icono" href="/pagos?trabajador=${esc(t.id)}" title="Liquidar pago">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
+          </a>
+          <button type="button" class="boton icono peligro" data-borrar="${esc(t.id)}" title="Eliminar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </td>
+      </tr>`
+      )
+      .join('');
+
+    cuerpo.querySelectorAll('tr[data-trabajador]').forEach((fila) => {
+      const id = fila.dataset.trabajador;
+      fila.querySelectorAll('[data-campo]').forEach((control) => {
+        control.addEventListener('change', async () => {
+          const campo = control.dataset.campo;
+          const valor = campo === 'activo' ? control.checked : control.value.trim() || null;
+          try {
+            await actualizarTrabajador(id, { [campo]: valor });
+            toast('Trabajador actualizado.', 'exito');
+            await cargar();
+          } catch (error) {
+            avisoError(error);
+            await cargar();
+          }
+        });
+      });
+    });
+
+    cuerpo.querySelectorAll('[data-borrar]').forEach((boton) => {
+      boton.addEventListener('click', () => borrar(boton.dataset.borrar));
+    });
+  }
+
+  async function cargar() {
+    trabajadores = await listarTrabajadoresResumen();
+    pintar();
+  }
+
+  async function agregar() {
+    const nombre = qs('#nombre').value.trim();
+    if (!nombre) return toast('Escribe el nombre del trabajador.', 'aviso');
+
+    const boton = qs('#agregar');
+    try {
+      cargando(boton, true, 'Agregando…');
+      await crearTrabajador({
+        nombre,
+        documento: qs('#documento').value.trim() || null,
+        telefono: qs('#telefono').value.trim() || null,
+      });
+      qs('#nombre').value = '';
+      qs('#documento').value = '';
+      qs('#telefono').value = '';
+      toast('Trabajador agregado.', 'exito');
+      await cargar();
+    } catch (error) {
+      avisoError(error);
+    } finally {
+      cargando(boton, false);
+    }
+  }
+
+  async function borrar(id) {
+    const t = trabajadores.find((x) => x.id === id);
+    if (Number(t?.lineas) > 0) {
+      toast('No se puede eliminar: el trabajador tiene registros de trabajo. Márcalo como inactivo.', 'aviso', 6000);
+      return;
+    }
+
+    const ok = await confirmar({
+      titulo: 'Eliminar trabajador',
+      mensaje: `¿Eliminar a ${t?.nombre ?? 'este trabajador'}? Esta acción no se puede deshacer.`,
+      textoAceptar: 'Eliminar',
+      peligro: true,
+    });
+    if (!ok) return;
+
+    try {
+      await eliminarTrabajador(id);
+      toast('Trabajador eliminado.', 'exito');
+      await cargar();
+    } catch (error) {
+      avisoError(error);
+    }
+  }
+
+  qs('#agregar').addEventListener('click', agregar);
+  qs('#buscar').addEventListener('input', pintar);
+  qs('#solo-activos').addEventListener('change', pintar);
+
+  cargar().catch((error) => {
+    avisoError(error);
+    cuerpo.innerHTML = `<tr><td colspan="8" class="sin-datos">${esc(error.message)}</td></tr>`;
+  });
+</script>

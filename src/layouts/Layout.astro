@@ -1,23 +1,105 @@
-<!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro Basics</title>
-	</head>
-	<body>
-		<slot />
-	</body>
-</html>
+---
+import '../styles/global.css';
+import Icon from '../components/Icon.astro';
 
-<style>
-	html,
-	body {
-		margin: 0;
-		width: 100%;
-		height: 100%;
-	}
-</style>
+const { titulo = 'Planilla Taller Textil', subtitulo = '' } = Astro.props;
+
+const ruta = Astro.url.pathname;
+const estaConfigurado = Boolean(import.meta.env.PUBLIC_SUPABASE_URL && import.meta.env.PUBLIC_SUPABASE_ANON_KEY);
+
+const enlaces = [
+  { href: '/', etiqueta: 'Tablero', icono: 'tablero', grupo: 'Resumen' },
+  { href: '/trabajo', etiqueta: 'Registro diario', icono: 'documento', grupo: 'Producción' },
+  { href: '/partidas', etiqueta: 'Partidas', icono: 'caja', grupo: 'Producción' },
+  { href: '/registros', etiqueta: 'Registros', icono: 'lista', grupo: 'Producción' },
+  { href: '/pagos', etiqueta: 'Pagos', icono: 'dinero', grupo: 'Planilla' },
+  { href: '/personal', etiqueta: 'Personal', icono: 'personas', grupo: 'Planilla' },
+  { href: '/operaciones', etiqueta: 'Catálogo', icono: 'tijeras', grupo: 'Configuración' },
+];
+
+const activo = (href) => (href === '/' ? ruta === '/' : ruta.startsWith(href));
+
+const grupos = [...new Set(enlaces.map((e) => e.grupo))];
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content="Planilla de producción y pagos para talleres textiles." />
+    <title>{titulo} · Planilla Taller Textil</title>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="barra-lateral no-imprimir">
+        <a class="marca" href="/">
+          <span class="marca-logo">
+            <Icon name="tijeras" size={20} />
+          </span>
+          <span>
+            <strong>Planilla</strong>
+            <span>Taller textil</span>
+          </span>
+        </a>
+
+        <nav class="navegacion">
+          {
+            grupos.map((grupo) => (
+              <>
+                <span class="titulo-seccion">{grupo}</span>
+                {enlaces
+                  .filter((e) => e.grupo === grupo)
+                  .map((e) => (
+                    <a class:list={['enlace-nav', { activo: activo(e.href) }]} href={e.href}>
+                      <Icon name={e.icono} size={17} />
+                      {e.etiqueta}
+                    </a>
+                  ))}
+              </>
+            ))
+          }
+        </nav>
+
+        <div class="pie-barra">
+          {estaConfigurado ? 'Conectado a Supabase' : 'Sin configurar Supabase'}
+        </div>
+      </aside>
+
+      <main class="principal">
+        <header class="encabezado">
+          <div>
+            <h1>{titulo}</h1>
+            {subtitulo && <p>{subtitulo}</p>}
+          </div>
+          <div class="acciones-encabezado">
+            <slot name="acciones" />
+          </div>
+        </header>
+
+        {
+          !estaConfigurado && (
+            <div class="alerta alerta-aviso mb-2">
+              <Icon name="aviso" size={18} />
+              <div>
+                <strong>Falta configurar Supabase.</strong>
+                <div>
+                  Copia <span class="mono">.env.example</span> a <span class="mono">.env</span> con
+                  <span class="mono"> PUBLIC_SUPABASE_URL</span> y
+                  <span class="mono"> PUBLIC_SUPABASE_ANON_KEY</span>, y ejecuta las migraciones de
+                  <span class="mono"> supabase/migrations</span>.
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        <slot />
+      </main>
+    </div>
+
+    <div id="toasts" class="toasts"></div>
+  </body>
+</html>
