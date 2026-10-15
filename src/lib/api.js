@@ -25,15 +25,24 @@ function traducirError(error) {
   if (codigo === '23514' || /check constraint/i.test(mensaje)) {
     return 'Alguno de los valores no es válido (revisa cantidades y precios).';
   }
-  if (codigo === 'P0001') return mensaje; // excepciones lanzadas por nuestras funciones
+  if (codigo === 'P0001' || codigo === 'P0002') return mensaje; // excepciones lanzadas por nuestras funciones
   if (/Failed to fetch|NetworkError|fetch failed|Load failed/i.test(mensaje)) {
     return 'No se pudo conectar con Supabase. Verifica tu conexión y las credenciales del .env.';
   }
   return mensaje || 'Ocurrió un error inesperado.';
 }
 
+/** Error con el SQLSTATE original para poder reaccionar a casos concretos. */
+export class ErrorApi extends Error {
+  constructor(mensaje, codigo) {
+    super(mensaje);
+    this.name = 'ErrorApi';
+    this.codigo = codigo ?? null;
+  }
+}
+
 function unwrap({ data, error }) {
-  if (error) throw new Error(traducirError(error));
+  if (error) throw new ErrorApi(traducirError(error), error.code);
   return data;
 }
 
@@ -164,6 +173,21 @@ export async function listarPaquetes(partidaId) {
   );
 }
 
+/**
+ * Avance de un paquete operación por operación: cuántas prendas ya se
+ * registraron (realizadas) y cuántas faltan (pendientes).
+ */
+export async function listarAvancePaquete(paqueteId) {
+  return unwrap(
+    await supabase
+      .from('v_paquete_operacion_avance')
+      .select('*')
+      .eq('paquete_id', paqueteId)
+      .order('orden', { ascending: true })
+      .order('operacion', { ascending: true })
+  );
+}
+
 export async function crearPaquete(partidaId, { numero, talla, cantidad }) {
   return unwrap(
     await supabase
@@ -271,10 +295,16 @@ export async function eliminarTrabajador(id) {
 /**
  * Registra el trabajo de un trabajador en un paquete. El precio de cada
  * operación se toma automáticamente de la lista de la partida.
+ *
+ * Si alguna cantidad supera lo pendiente del paquete, Supabase responde con
+ * `error.codigo === 'P0002'`; la app avisa al usuario y, si confirma, vuelve a
+ * llamar con `permitirExceso: true`.
+ *
  * @param {{fecha:string, trabajadorId:string, partidaId:string, paqueteId:string,
  *          lineas:Array<{partida_operacion_id:string, cantidad:number}>, notas?:string}} datos
+ * @param {{permitirExceso?: boolean}} opciones
  */
-export async function registrarTrabajo(datos) {
+export async function registrarTrabajo(datos, { permitirExceso = false } = {}) {
   const lineas = (datos.lineas ?? []).filter((l) => Number(l.cantidad) > 0);
   if (lineas.length === 0) throw new Error('Ingresa al menos una cantidad mayor a cero.');
 
@@ -289,8 +319,15 @@ export async function registrarTrabajo(datos) {
         cantidad: Number(l.cantidad),
       })),
       p_notas: datos.notas ?? null,
+      p_permitir_exceso: permitirExceso,
     })
   );
+}
+
+/** ¿El error corresponde al control de "más prendas de las pendientes"? */
+export function esErrorDeExceso(error) {
+  if (!error) return false;
+  return error.codigo === 'P0002' || /supera lo pendiente/i.test(error.message ?? '');
 }
 
 /** Detalle de registros con filtros opcionales. */

@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import Icon from '../components/Icon.astro';
 ---
 
-<Layout titulo="Registro diario" subtitulo="Anota el trabajo hecho por cada trabajador y calcula el pago automáticamente.">
+<Layout titulo="Registro diario" subtitulo="Anota el trabajo hecho por cada trabajador. El sistema descuenta lo que ya está hecho en cada paquete.">
   <div slot="acciones">
     <a class="boton secundario" href="/registros">
       <Icon name="lista" size={16} /> Ver todos los registros
@@ -37,13 +37,13 @@ import Icon from '../components/Icon.astro';
         </div>
       </div>
 
-      <div id="resumen-partida" class="fila mt-2"></div>
+      <div id="resumen-partida" class="fila mt-4"></div>
 
-      <div class="bloque mt-2">
+      <div class="bloque mt-4">
         <div class="bloque-cabecera">
-          <span>Operaciones de la partida</span>
+          <span>Operaciones del paquete</span>
           <span class="fila">
-            <button type="button" class="boton sutil pequeno" id="llenar-todo">Llenar con la cantidad del paquete</button>
+            <button type="button" class="boton sutil pequeno" id="llenar-todo">Llenar con lo que falta</button>
             <button type="button" class="boton sutil pequeno" id="vaciar">Vaciar</button>
           </span>
         </div>
@@ -52,17 +52,21 @@ import Icon from '../components/Icon.astro';
             <thead>
               <tr>
                 <th>Operación</th>
-                <th class="num">Precio por prenda</th>
-                <th class="num">Cantidad hecha</th>
+                <th class="num">Precio</th>
+                <th class="num">Ya hecho</th>
+                <th class="num">Falta</th>
+                <th class="num" style="min-width:150px">Cantidad a registrar</th>
                 <th class="num">Subtotal</th>
               </tr>
             </thead>
             <tbody id="cuerpo-operaciones">
-              <tr><td colspan="4" class="sin-datos">Elige una partida para ver sus operaciones.</td></tr>
+              <tr><td colspan="6" class="sin-datos">Elige una partida y un paquete para ver las operaciones.</td></tr>
             </tbody>
             <tfoot id="pie-operaciones" class="oculto">
               <tr>
                 <td colspan="3">Total a pagar por este registro</td>
+                <td class="num" id="total-piezas">0</td>
+                <td></td>
                 <td class="num" id="total-registro">S/ 0.00</td>
               </tr>
             </tfoot>
@@ -70,12 +74,12 @@ import Icon from '../components/Icon.astro';
         </div>
       </div>
 
-      <div class="campo mt-2">
+      <div class="campo mt-4">
         <label for="notas">Notas (opcional)</label>
         <input type="text" id="notas" placeholder="Observaciones del lote, merma, etc." />
       </div>
 
-      <div class="fila separado mt-3">
+      <div class="fila separado mt-4">
         <span class="pista" id="pista-guardar"></span>
         <button type="button" class="boton" id="guardar">
           <Icon name="check" size={16} /> Guardar registro
@@ -123,9 +127,9 @@ import Icon from '../components/Icon.astro';
 </Layout>
 
 <script>
-  import { listarTrabajadores, listarPartidas, listarPartidaOperaciones, listarPaquetes, registrarTrabajo, listarRegistros, eliminarRegistro } from '../lib/api.js';
+  import { listarTrabajadores, listarPartidas, listarPaquetes, listarAvancePaquete, registrarTrabajo, listarRegistros, eliminarRegistro, esErrorDeExceso } from '../lib/api.js';
   import { soles, precioUnitario, numero, hoyISO, fecha } from '../lib/format.js';
-  import { qs, esc, toast, avisoError, confirmar, cargando } from '../lib/ui.js';
+  import { qs, esc, toast, avisoError, confirmar, cargando, mensajeDeError } from '../lib/ui.js';
 
   const elFecha = qs('#fecha');
   const elTrabajador = qs('#trabajador');
@@ -135,6 +139,7 @@ import Icon from '../components/Icon.astro';
   const cuerpoOperaciones = qs('#cuerpo-operaciones');
   const pieOperaciones = qs('#pie-operaciones');
   const totalRegistro = qs('#total-registro');
+  const totalPiezas = qs('#total-piezas');
   const resumenPartida = qs('#resumen-partida');
   const cuerpoDia = qs('#cuerpo-dia');
   const pieDia = qs('#pie-dia');
@@ -146,8 +151,8 @@ import Icon from '../components/Icon.astro';
   const estado = {
     trabajadores: [],
     partidas: [],
-    operaciones: [],
-    paquetes: [],
+    avance: [], // filas de v_paquete_operacion_avance del paquete elegido
+    registrosPaquete: [], // trabajo ya hecho en el paquete (quién lo hizo)
     paqueteActual: null,
   };
 
@@ -187,31 +192,25 @@ import Icon from '../components/Icon.astro';
 
   async function alCambiarPartida(paqueteId = null) {
     const partidaId = elPartida.value;
-    estado.operaciones = [];
-    estado.paquetes = [];
+    estado.avance = [];
+    estado.registrosPaquete = [];
     estado.paqueteActual = null;
     elPaquete.disabled = true;
     resumenPartida.innerHTML = '';
-    cuerpoOperaciones.innerHTML = '<tr><td colspan="4" class="sin-datos">Cargando…</td></tr>';
+    cuerpoOperaciones.innerHTML = '<tr><td colspan="6" class="sin-datos">Cargando…</td></tr>';
     pieOperaciones.classList.add('oculto');
 
     if (!partidaId) {
       elPaquete.innerHTML = '<option value="">Elige una partida</option>';
-      cuerpoOperaciones.innerHTML = '<tr><td colspan="4" class="sin-datos">Elige una partida para ver sus operaciones.</td></tr>';
+      cuerpoOperaciones.innerHTML = '<tr><td colspan="6" class="sin-datos">Elige una partida y un paquete para ver las operaciones.</td></tr>';
       return;
     }
 
-    const [operaciones, paquetes] = await Promise.all([
-      listarPartidaOperaciones(partidaId),
-      listarPaquetes(partidaId),
-    ]);
-
-    estado.operaciones = operaciones;
-    estado.paquetes = paquetes;
-
+    const paquetes = await listarPaquetes(partidaId);
     const partida = estado.partidas.find((p) => p.id === partidaId);
+
     resumenPartida.innerHTML = `
-      <span class="chip primario">${numero(operaciones.length)} operaciones</span>
+      <span class="chip primario">${numero(partida?.num_operaciones ?? 0)} operaciones</span>
       <span class="chip">${numero(paquetes.length)} paquetes</span>
       <span class="chip info">Precio prenda: ${soles(partida?.precio_prenda ?? 0)}</span>
       <span class="chip exito">Total partida: ${soles(partida?.total_partida ?? 0)}</span>`;
@@ -220,43 +219,86 @@ import Icon from '../components/Icon.astro';
       placeholder: 'Elige el paquete',
       texto: (q) => `Paquete ${q.numero} — Talla ${q.talla} (${q.cantidad} prendas)`,
     });
-    elPaquete.disabled = paquetes.length === 0;
 
     if (paquetes.length === 0) {
-      cuerpoOperaciones.innerHTML = '<tr><td colspan="4" class="sin-datos">Esta partida todavía no tiene paquetes.</td></tr>';
       elPaquete.innerHTML = '<option value="">Sin paquetes</option>';
+      cuerpoOperaciones.innerHTML = '<tr><td colspan="6" class="sin-datos">Esta partida todavía no tiene paquetes.</td></tr>';
       return;
     }
 
-    if (paqueteId && paquetes.some((q) => q.id === paqueteId)) elPaquete.value = paqueteId;
-    else elPaquete.value = paquetes[0].id;
-
-    alCambiarPaquete();
+    elPaquete.disabled = false;
+    elPaquete.value = paqueteId && paquetes.some((q) => q.id === paqueteId) ? paqueteId : paquetes[0].id;
+    await cargarAvance();
   }
 
-  function alCambiarPaquete() {
-    estado.paqueteActual = estado.paquetes.find((q) => q.id === elPaquete.value) ?? null;
+  /** Trae lo pendiente del paquete y quién ya trabajó en él. */
+  async function cargarAvance() {
+    const paqueteId = elPaquete.value;
+    estado.paqueteActual = null;
+    if (!paqueteId) return;
+
+    cuerpoOperaciones.innerHTML = '<tr><td colspan="6" class="sin-datos">Cargando…</td></tr>';
+
+    const [avance, registros] = await Promise.all([
+      listarAvancePaquete(paqueteId),
+      listarRegistros({ paqueteId, limite: 500 }),
+    ]);
+
+    estado.avance = avance;
+    estado.registrosPaquete = registros;
+    estado.paqueteActual = avance.length
+      ? {
+          id: paqueteId,
+          numero: avance[0].paquete_numero,
+          talla: avance[0].paquete_talla,
+          cantidad: avance[0].cantidad_paquete,
+        }
+      : null;
+
     renderOperaciones();
     llenarTodo();
   }
 
+  function textoHechoPor(operacionId) {
+    const filas = estado.registrosPaquete.filter((r) => r.operacion_id === operacionId);
+    if (filas.length === 0) return '';
+
+    const porTrabajador = new Map();
+    filas.forEach((r) => {
+      porTrabajador.set(r.trabajador, (porTrabajador.get(r.trabajador) ?? 0) + Number(r.cantidad));
+    });
+
+    return 'Hecho por: ' + [...porTrabajador].map(([nombre, cant]) => `${nombre} ${numero(cant)}`).join(' · ');
+  }
+
   function renderOperaciones() {
-    if (estado.operaciones.length === 0) {
-      cuerpoOperaciones.innerHTML = '<tr><td colspan="4" class="sin-datos">Esta partida no tiene operaciones registradas.</td></tr>';
+    if (estado.avance.length === 0) {
+      cuerpoOperaciones.innerHTML = '<tr><td colspan="6" class="sin-datos">Esta partida no tiene operaciones registradas.</td></tr>';
       pieOperaciones.classList.add('oculto');
       return;
     }
 
-    cuerpoOperaciones.innerHTML = estado.operaciones
-      .map(
-        (op) => `
-        <tr data-operacion="${esc(op.id)}" data-precio="${Number(op.precio)}">
-          <td class="negrita">${esc(op.nombre)}</td>
-          <td class="num">${esc(precioUnitario(op.precio))}</td>
+    cuerpoOperaciones.innerHTML = estado.avance
+      .map((fila) => {
+        const hechoPor = textoHechoPor(fila.partida_operacion_id);
+        const completa = Number(fila.pendientes) === 0;
+
+        return `
+        <tr data-operacion="${esc(fila.partida_operacion_id)}" data-precio="${Number(fila.precio)}" data-pendientes="${Number(fila.pendientes)}" data-nombre="${esc(fila.operacion)}">
+          <td>
+            <span class="negrita">${esc(fila.operacion)}</span>
+            ${completa ? '<span class="chip exito">Completa</span>' : ''}
+            ${hechoPor ? `<div class="texto-suave texto-pequeno">${esc(hechoPor)}</div>` : ''}
+          </td>
+          <td class="num">${esc(precioUnitario(fila.precio))}</td>
+          <td class="num ${Number(fila.realizadas) ? '' : 'texto-suave'}">
+            ${Number(fila.realizadas) ? `${numero(fila.realizadas)} / ${numero(fila.cantidad_paquete)}` : '—'}
+          </td>
+          <td class="num ${completa ? 'texto-suave' : 'negrita'}">${numero(fila.pendientes)}</td>
           <td class="num"><input type="number" class="cantidad" min="0" step="1" value="0" data-cantidad /></td>
           <td class="num subtotal">${esc(soles(0))}</td>
-        </tr>`
-      )
+        </tr>`;
+      })
       .join('');
 
     cuerpoOperaciones.querySelectorAll('[data-cantidad]').forEach((input) => {
@@ -280,19 +322,22 @@ import Icon from '../components/Icon.astro';
     });
 
     totalRegistro.textContent = soles(total);
+    totalPiezas.textContent = numero(piezas);
+
     const trabajador = estado.trabajadores.find((t) => t.id === elTrabajador.value);
     const paquete = estado.paqueteActual;
+    const partida = estado.partidas.find((p) => p.id === elPartida.value);
 
     pistaGuardar.textContent =
       trabajador && paquete && piezas > 0
-        ? `${trabajador.nombre} · Partida ${estado.partidas.find((p) => p.id === elPartida.value)?.codigo ?? ''} · Paquete ${paquete.numero} (${paquete.talla}) · ${numero(piezas)} prendas`
+        ? `${trabajador.nombre} · Partida ${partida?.codigo ?? ''} · Paquete ${paquete.numero} (${paquete.talla}) · ${numero(piezas)} prendas`
         : 'Completa trabajador, partida, paquete y cantidades.';
   }
 
+  /** Rellena cada operación con las prendas que faltan por hacer. */
   function llenarTodo() {
-    const cantidad = estado.paqueteActual?.cantidad ?? 0;
-    cuerpoOperaciones.querySelectorAll('[data-cantidad]').forEach((input) => {
-      input.value = cantidad;
+    cuerpoOperaciones.querySelectorAll('tr[data-operacion]').forEach((fila) => {
+      fila.querySelector('[data-cantidad]').value = Number(fila.dataset.pendientes) || 0;
     });
     recalcular();
   }
@@ -306,6 +351,22 @@ import Icon from '../components/Icon.astro';
 
   // ---------------------------------------------------------------- guardar
 
+  function recolectarLineas() {
+    const lineas = [];
+    cuerpoOperaciones.querySelectorAll('tr[data-operacion]').forEach((fila) => {
+      const cantidad = Number(fila.querySelector('[data-cantidad]').value) || 0;
+      if (cantidad > 0) {
+        lineas.push({
+          partida_operacion_id: fila.dataset.operacion,
+          nombre: fila.dataset.nombre,
+          cantidad,
+          pendientes: Number(fila.dataset.pendientes) || 0,
+        });
+      }
+    });
+    return lineas;
+  }
+
   async function guardar() {
     const fechaTrabajo = elFecha.value;
     if (!fechaTrabajo) return toast('Elige la fecha del trabajo.', 'aviso');
@@ -313,45 +374,76 @@ import Icon from '../components/Icon.astro';
     if (!elPartida.value) return toast('Elige la partida.', 'aviso');
     if (!elPaquete.value) return toast('Elige el paquete.', 'aviso');
 
-    const lineas = [];
-    cuerpoOperaciones.querySelectorAll('tr[data-operacion]').forEach((fila) => {
-      const cantidad = Number(fila.querySelector('[data-cantidad]').value) || 0;
-      if (cantidad > 0) lineas.push({ partida_operacion_id: fila.dataset.operacion, cantidad });
-    });
-
+    const lineas = recolectarLineas();
     if (lineas.length === 0) return toast('Ingresa al menos una cantidad mayor a cero.', 'aviso');
 
+    const datos = {
+      fecha: fechaTrabajo,
+      trabajadorId: elTrabajador.value,
+      partidaId: elPartida.value,
+      paqueteId: elPaquete.value,
+      lineas,
+      notas: elNotas.value || null,
+    };
+
     try {
-      const existentes = await listarRegistros({
+      const repetidos = await listarRegistros({
         desde: fechaTrabajo,
         hasta: fechaTrabajo,
-        trabajadorId: elTrabajador.value,
-        paqueteId: elPaquete.value,
+        trabajadorId: datos.trabajadorId,
+        paqueteId: datos.paqueteId,
         limite: 50,
       });
 
-      if (existentes.length > 0) {
+      if (repetidos.length > 0) {
         const continuar = await confirmar({
           titulo: 'Ya hay trabajo registrado',
-          mensaje: `Este trabajador ya tiene ${existentes.length} línea(s) registradas en ese paquete para el ${fecha(fechaTrabajo)}. Si continúas se sumarán como un registro nuevo.`,
+          mensaje: `Este trabajador ya tiene ${repetidos.length} línea(s) registradas en ese paquete para el ${fecha(fechaTrabajo)}. Si continúas se sumarán como un registro nuevo.`,
           textoAceptar: 'Registrar igualmente',
         });
         if (!continuar) return;
       }
 
+      // Aviso por exceso: se registra más de lo que falta por hacer.
+      const excesos = lineas.filter((l) => l.cantidad > l.pendientes);
+      let permitirExceso = false;
+
+      if (excesos.length > 0) {
+        const detalle = excesos
+          .map((l) => `• ${l.nombre}: registras ${numero(l.cantidad)} y solo faltan ${numero(l.pendientes)}`)
+          .join('\n');
+
+        const continuar = await confirmar({
+          titulo: 'Más prendas de las pendientes',
+          mensaje: `${detalle}\n\nEsas prendas ya fueron registradas (por este trabajador o por otro). Si continúas, se pagarán de nuevo.\n\n¿Registrar el trabajo extra igualmente?`,
+          textoAceptar: 'Sí, registrar igual',
+          peligro: true,
+        });
+        if (!continuar) return;
+        permitirExceso = true;
+      }
+
       cargando(botonGuardar, true, 'Guardando…');
-      await registrarTrabajo({
-        fecha: fechaTrabajo,
-        trabajadorId: elTrabajador.value,
-        partidaId: elPartida.value,
-        paqueteId: elPaquete.value,
-        lineas,
-        notas: elNotas.value || null,
-      });
+
+      try {
+        await registrarTrabajo(datos, { permitirExceso });
+      } catch (error) {
+        // Otra persona pudo registrar prendas mientras completabas el formulario.
+        if (!esErrorDeExceso(error)) throw error;
+
+        const continuar = await confirmar({
+          titulo: 'Más prendas de las pendientes',
+          mensaje: `${mensajeDeError(error)}\n\n¿Registrar el trabajo extra igualmente?`,
+          textoAceptar: 'Sí, registrar igual',
+          peligro: true,
+        });
+        if (!continuar) return;
+        await registrarTrabajo(datos, { permitirExceso: true });
+      }
 
       toast('Registro guardado correctamente.', 'exito');
       elNotas.value = '';
-      vaciar();
+      await cargarAvance();
       await cargarDia();
     } catch (error) {
       avisoError(error);
@@ -384,7 +476,7 @@ import Icon from '../components/Icon.astro';
           <td>${esc(r.operacion)}</td>
           <td class="num">${esc(numero(r.cantidad))}</td>
           <td class="num negrita">${esc(soles(r.subtotal))}</td>
-          <td class="num">${r.pago_id ? '<span class="chip exito">Pagado</span>' : '<span class="chip alerta">Pendiente</span>'}</td>
+          <td class="num">${r.pago_id ? '<span class="chip exito">Pagado</span>' : '<span class="chip aviso">Pendiente</span>'}</td>
           <td class="acciones-fila">
             <button type="button" class="boton icono peligro" data-borrar="${esc(r.id)}" title="Eliminar">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -410,6 +502,7 @@ import Icon from '../components/Icon.astro';
         try {
           await eliminarRegistro(boton.dataset.borrar);
           toast('Registro eliminado.', 'exito');
+          await cargarAvance();
           await cargarDia();
         } catch (error) {
           avisoError(error);
@@ -423,8 +516,8 @@ import Icon from '../components/Icon.astro';
   elFecha.value = hoyISO();
   elFecha.addEventListener('change', cargarDia);
   elPartida.addEventListener('change', () => alCambiarPartida());
+  elPaquete.addEventListener('change', cargarAvance);
   elTrabajador.addEventListener('change', recalcular);
-  elPaquete.addEventListener('change', alCambiarPaquete);
   qs('#llenar-todo').addEventListener('click', llenarTodo);
   qs('#vaciar').addEventListener('click', vaciar);
   botonGuardar.addEventListener('click', guardar);
@@ -435,7 +528,7 @@ import Icon from '../components/Icon.astro';
       await cargarDia();
     } catch (error) {
       avisoError(error);
-      cuerpoOperaciones.innerHTML = `<tr><td colspan="4" class="sin-datos">${esc(error.message)}</td></tr>`;
+      cuerpoOperaciones.innerHTML = `<tr><td colspan="6" class="sin-datos">${esc(error.message)}</td></tr>`;
     }
   })();
 </script>

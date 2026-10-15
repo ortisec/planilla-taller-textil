@@ -1,0 +1,3 @@
+# Configuración de la CLI de Supabase.
+# Si necesitas el archivo completo con todas las opciones, ejecuta: supabase init
+project_id = "planilla-taller-textil"

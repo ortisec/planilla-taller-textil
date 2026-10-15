@@ -7,6 +7,7 @@ precios**, se anotan los **paquetes** (talla + cantidad de prendas) y luego el
 debe pagar. Finalmente se **liquidan pagos por rango de fechas**.
 
 - **Frontend:** Astro (sitio estático) — ideal para desplegar en Vercel.
+- **Estilos:** Tailwind CSS v4 (tema y sistema de diseño en `src/styles/global.css`).
 - **Backend:** Supabase (Postgres + API REST autogenerada + RLS).
 
 ---
@@ -25,6 +26,16 @@ Ejemplo: la partida **123** tiene 24 paquetes y las operaciones *Unir Hombros*
 Hombros* en el **paquete 3 (talla M, 18 prendas)**, su pago es
 `18 × 0.10 = S/ 1.80`.
 
+### Reglas de control
+
+- **Nadie cobra dos veces la misma prenda.** Por cada paquete y operación, la
+  suma de lo registrado por todos los trabajadores no puede superar la cantidad
+  de prendas del paquete. Si se intenta registrar más, el sistema avisa y pide
+  confirmación explícita antes de guardar (pago extra).
+- **El registro diario descuenta lo hecho.** La columna *Falta* y los campos de
+  cantidad muestran las prendas pendientes de ese paquete/operación, no el total
+  del paquete, y se indica qué trabajador ya hizo cada operación.
+
 ---
 
 ## 2. Puesta en marcha
@@ -36,13 +47,23 @@ Hombros* en el **paquete 3 (talla M, 18 prendas)**, su pago es
 
 ### 2.2 Crear las tablas en Supabase
 
-En el panel de Supabase abre **SQL Editor** y ejecuta, en este orden, el
-contenido de:
+En el panel de Supabase abre **SQL Editor** y ejecuta, **en este orden**, el
+contenido de cada archivo:
 
 1. `supabase/migrations/20261014120000_init.sql` → tablas, vistas, funciones y políticas.
-2. `supabase/seed.sql` → catálogo de operaciones, personal y partida de ejemplo (opcional).
+2. `supabase/migrations/20261015120000_avance_paquete.sql` → control de avance por paquete.
+3. `supabase/seed.sql` → catálogo de operaciones, personal y partida de ejemplo (opcional).
 
-> También puedes usar la CLI de Supabase:
+> Recuerda pegar el **contenido** del archivo, no la ruta. El SQL Editor no lee
+> archivos del repositorio.
+>
+> Los tres scripts son **re-ejecutables** (puedes volver a pasarlos sin romper
+> nada). Si quieres comprobar qué objetos ya existen y cuántas filas hay por
+> tabla, ejecuta `supabase/verificar.sql`.
+>
+> `seed.sql` es idempotente: si lo corres dos veces no duplica nada.
+
+> También puedes usar la CLI de Supabase (ya está `supabase/config.toml`):
 > ```bash
 > supabase link --project-ref TU_PROJECT_REF
 > supabase db push
@@ -114,14 +135,17 @@ planilla-taller-textil/
 │   │   ├── format.js             # moneda, fechas y números
 │   │   └── ui.js                 # avisos, confirmaciones y utilidades
 │   └── styles/
-│       └── global.css
+│       └── global.css            # Tailwind v4: tema + sistema de diseño
 ├── supabase/
 │   ├── migrations/
-│   │   └── 20261014120000_init.sql
-│   └── seed.sql
+│   │   ├── 20261014120000_init.sql
+│   │   └── 20261015120000_avance_paquete.sql
+│   ├── config.toml
+│   ├── seed.sql
+│   └── verificar.sql
 ├── public/
 ├── .env.example
-├── astro.config.mjs
+├── astro.config.mjs              # Tailwind v4 vía @tailwindcss/vite
 ├── package.json
 └── tsconfig.json
 ```
@@ -134,8 +158,10 @@ planilla-taller-textil/
 2. **Personal** (`/personal`): registra a los trabajadores.
 3. **Partidas** (`/partidas`): crea la partida; marca las operaciones (ajustando el precio
    si hace falta) y genera los paquetes con su talla y cantidad.
-4. **Registro diario** (`/trabajo`): elige fecha, trabajador, partida y paquete; las
-   cantidades se llenan con la cantidad del paquete y las ajustas si el trabajo fue parcial.
+4. **Registro diario** (`/trabajo`): elige fecha, trabajador, partida y paquete. La tabla
+   muestra, por operación, cuánto se hizo y cuánto **falta**; las cantidades llegan
+   precargadas con lo pendiente y se pueden ajustar (trabajo parcial). Si intentas
+   registrar más de lo que falta, el sistema pide confirmación.
 5. **Pagos** (`/pagos`): elige trabajador y rango de fechas, revisa la vista previa y
    registra el pago. Se genera un comprobante imprimible.
 
@@ -153,8 +179,8 @@ planilla-taller-textil/
 | `registros_trabajo` | Trabajo hecho: trabajador + partida + paquete + operación + cantidad. |
 | `pagos` | Pago liquidado a un trabajador en un rango de fechas. |
 
-Vistas: `v_partida_resumen`, `v_paquete_resumen`, `v_registros_detalle`,
-`v_trabajador_resumen`, `v_operacion_uso`.
+Vistas: `v_partida_resumen`, `v_paquete_resumen`, `v_paquete_operacion_avance`,
+`v_registros_detalle`, `v_trabajador_resumen`, `v_operacion_uso`.
 
 Funciones: `fn_crear_partida`, `fn_registrar_trabajo`, `fn_registrar_pago`,
 `fn_anular_pago`.

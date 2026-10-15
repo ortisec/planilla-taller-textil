@@ -87,11 +87,12 @@ import Icon from '../../components/Icon.astro';
                 <th>Operación</th>
                 <th class="num" style="width:170px">Precio por prenda</th>
                 <th class="num" style="width:120px">Hechas</th>
+                <th class="num" style="width:110px">Falta</th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="cuerpo-operaciones">
-              <tr><td colspan="4" class="sin-datos">Cargando…</td></tr>
+              <tr><td colspan="5" class="sin-datos">Cargando…</td></tr>
             </tbody>
           </table>
         </div>
@@ -281,20 +282,24 @@ import Icon from '../../components/Icon.astro';
 
   function pintarOperaciones() {
     if (datos.operaciones.length === 0) {
-      cuerpoOperaciones.innerHTML = '<tr><td colspan="4" class="sin-datos">Esta partida no tiene operaciones.</td></tr>';
+      cuerpoOperaciones.innerHTML = '<tr><td colspan="5" class="sin-datos">Esta partida no tiene operaciones.</td></tr>';
       return;
     }
+
+    const total = totalPrendas();
 
     cuerpoOperaciones.innerHTML = datos.operaciones
       .map((op) => {
         const hechas = datos.registros
           .filter((r) => r.operacion_id === op.id)
           .reduce((s, r) => s + Number(r.cantidad), 0);
+        const faltan = Math.max(total - hechas, 0);
         return `
         <tr data-operacion="${esc(op.id)}">
           <td><input type="text" value="${esc(op.nombre)}" data-nombre /></td>
           <td class="num"><input type="number" class="precio" min="0" step="0.01" value="${Number(op.precio)}" data-precio /></td>
-          <td class="num texto-suave">${esc(numero(hechas))}</td>
+          <td class="num texto-suave">${esc(numero(hechas))} / ${esc(numero(total))}</td>
+          <td class="num ${faltan === 0 ? 'texto-suave' : 'negrita'}">${esc(numero(faltan))}</td>
           <td class="acciones-fila">
             <button type="button" class="boton icono peligro" data-borrar-operacion="${esc(op.id)}" title="Eliminar">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -443,7 +448,7 @@ import Icon from '../../components/Icon.astro';
           <td>${esc(r.operacion)}</td>
           <td class="num">${esc(numero(r.cantidad))}</td>
           <td class="num negrita">${esc(soles(r.subtotal))}</td>
-          <td class="num">${r.pago_id ? '<span class="chip exito">Pagado</span>' : '<span class="chip alerta">Pendiente</span>'}</td>
+          <td class="num">${r.pago_id ? '<span class="chip exito">Pagado</span>' : '<span class="chip aviso">Pendiente</span>'}</td>
           <td class="acciones-fila">
             <button type="button" class="boton icono peligro" data-borrar-registro="${esc(r.id)}" title="Eliminar">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
