@@ -1,0 +1,309 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
+---
+
+<Layout titulo="Registros de trabajo" subtitulo="Consulta el detalle diario y filtra por fecha, trabajador o partida.">
+  <div slot="acciones">
+    <a class="boton" href="/trabajo">
+      <Icon name="documento" size={16} /> Registrar trabajo
+    </a>
+  </div>
+
+  <div class="tarjeta">
+    <div class="tarjeta-cabecera">
+      <div>
+        <h2>Filtros</h2>
+        <p>Por defecto se muestra el mes en curso.</p>
+      </div>
+      <div class="fila">
+        <button type="button" class="boton secundario pequeno" id="limpiar">Limpiar</button>
+        <button type="button" class="boton secundario pequeno" id="exportar">
+          <Icon name="descargar" size={14} /> Exportar CSV
+        </button>
+      </div>
+    </div>
+    <div class="tarjeta-cuerpo">
+      <div class="formulario-rejilla">
+        <div class="campo">
+          <label for="desde">Desde</label>
+          <input type="date" id="desde" />
+        </div>
+        <div class="campo">
+          <label for="hasta">Hasta</label>
+          <input type="date" id="hasta" />
+        </div>
+        <div class="campo">
+          <label for="trabajador">Trabajador</label>
+          <select id="trabajador"><option value="">Todos</option></select>
+        </div>
+        <div class="campo">
+          <label for="partida">Partida</label>
+          <select id="partida"><option value="">Todas</option></select>
+        </div>
+        <div class="campo">
+          <label for="estado">Estado de pago</label>
+          <select id="estado">
+            <option value="">Todos</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="pagado">Pagado</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>&nbsp;</label>
+          <button type="button" class="boton" id="filtrar">
+            <Icon name="buscar" size={15} /> Buscar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rejilla kpi mt-3 mb-2">
+    <div class="kpi">
+      <div class="kpi-etiqueta">Líneas encontradas</div>
+      <div class="kpi-valor" id="kpi-lineas">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-etiqueta">Prendas</div>
+      <div class="kpi-valor" id="kpi-prendas">—</div>
+    </div>
+    <div class="kpi resaltado">
+      <div class="kpi-etiqueta">Importe total</div>
+      <div class="kpi-valor" id="kpi-importe">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-etiqueta">Pendiente de pago</div>
+      <div class="kpi-valor" id="kpi-pendiente">—</div>
+    </div>
+  </div>
+
+  <div class="tarjeta">
+    <div class="tarjeta-cabecera">
+      <div>
+        <h2>Detalle</h2>
+        <p id="resumen-filtros">—</p>
+      </div>
+    </div>
+    <div class="tarjeta-cuerpo sin-padding">
+      <div class="tabla-envoltura">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Trabajador</th>
+              <th>Partida</th>
+              <th>Paquete</th>
+              <th>Operación</th>
+              <th class="num">Cant.</th>
+              <th class="num">P. unit.</th>
+              <th class="num">Importe</th>
+              <th class="num">Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo">
+            <tr><td colspan="10" class="sin-datos">Cargando…</td></tr>
+          </tbody>
+          <tfoot id="pie" class="oculto">
+            <tr>
+              <td colspan="5">Total del filtro</td>
+              <td class="num" id="total-cantidad">0</td>
+              <td></td>
+              <td class="num" id="total-importe">S/ 0.00</td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { listarRegistros, eliminarRegistro, listarTrabajadores, listarPartidas } from '../lib/api.js';
+  import { soles, precioUnitario, numero, fecha, hoyISO, inicioDeMes } from '../lib/format.js';
+  import { qs, esc, toast, avisoError, confirmar } from '../lib/ui.js';
+
+  const elDesde = qs('#desde');
+  const elHasta = qs('#hasta');
+  const elTrabajador = qs('#trabajador');
+  const elPartida = qs('#partida');
+  const elEstado = qs('#estado');
+  const cuerpo = qs('#cuerpo');
+  const pie = qs('#pie');
+
+  let ultimos = [];
+
+  function filtrosActuales() {
+    return {
+      desde: elDesde.value || null,
+      hasta: elHasta.value || null,
+      trabajadorId: elTrabajador.value || null,
+      partidaId: elPartida.value || null,
+      estado: elEstado.value || null,
+      limite: 1000,
+    };
+  }
+
+  function textoFiltros(f) {
+    const partes = [];
+    partes.push(`Del ${fecha(f.desde)} al ${fecha(f.hasta)}`);
+    if (f.trabajadorId) partes.push(`Trabajador: ${elTrabajador.options[elTrabajador.selectedIndex].text}`);
+    if (f.partidaId) partes.push(`Partida: ${elPartida.options[elPartida.selectedIndex].text}`);
+    if (f.estado) partes.push(`Estado: ${f.estado === 'pendiente' ? 'pendiente de pago' : 'pagado'}`);
+    return partes.join(' · ');
+  }
+
+  function pintar(resumen) {
+    const registros = resumen.registros;
+    ultimos = registros;
+
+    if (registros.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="10" class="sin-datos">No hay registros con esos filtros.</td></tr>';
+      pie.classList.add('oculto');
+    } else {
+      cuerpo.innerHTML = registros
+        .map(
+          (r) => `
+          <tr>
+            <td>${esc(fecha(r.fecha))}</td>
+            <td class="negrita">${esc(r.trabajador)}</td>
+            <td><a href="/partidas/detalle?id=${esc(r.partida_id)}">${esc(r.partida_codigo)}</a></td>
+            <td>${esc(r.paquete_numero)} · ${esc(r.paquete_talla)}</td>
+            <td>${esc(r.operacion)}</td>
+            <td class="num">${esc(numero(r.cantidad))}</td>
+            <td class="num texto-suave">${esc(precioUnitario(r.precio_unitario))}</td>
+            <td class="num negrita">${esc(soles(r.subtotal))}</td>
+            <td class="num">${r.pago_id ? '<span class="chip exito">Pagado</span>' : '<span class="chip alerta">Pendiente</span>'}</td>
+            <td class="acciones-fila">
+              <button type="button" class="boton icono peligro" data-borrar="${esc(r.id)}" title="Eliminar">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </td>
+          </tr>`
+        )
+        .join('');
+
+      qs('#total-cantidad').textContent = numero(resumen.prendas);
+      qs('#total-importe').textContent = soles(resumen.importe);
+      pie.classList.remove('oculto');
+    }
+
+    qs('#kpi-lineas').textContent = numero(registros.length);
+    qs('#kpi-prendas').textContent = numero(resumen.prendas);
+    qs('#kpi-importe').textContent = soles(resumen.importe);
+    qs('#kpi-pendiente').textContent = soles(resumen.pendiente);
+    qs('#resumen-filtros').textContent = textoFiltros(filtrosActuales());
+
+    cuerpo.querySelectorAll('[data-borrar]').forEach((boton) => {
+      boton.addEventListener('click', async () => {
+        const ok = await confirmar({
+          titulo: 'Eliminar registro',
+          mensaje: '¿Seguro que deseas eliminar esta línea de trabajo?',
+          textoAceptar: 'Eliminar',
+          peligro: true,
+        });
+        if (!ok) return;
+        try {
+          await eliminarRegistro(boton.dataset.borrar);
+          toast('Registro eliminado.', 'exito');
+          await buscar();
+        } catch (error) {
+          avisoError(error);
+        }
+      });
+    });
+  }
+
+  function calcular(registros) {
+    return {
+      registros,
+      prendas: registros.reduce((s, r) => s + Number(r.cantidad), 0),
+      importe: registros.reduce((s, r) => s + Number(r.subtotal), 0),
+      pendiente: registros.filter((r) => !r.pago_id).reduce((s, r) => s + Number(r.subtotal), 0),
+    };
+  }
+
+  async function buscar() {
+    cuerpo.innerHTML = '<tr><td colspan="10" class="sin-datos">Cargando…</td></tr>';
+    try {
+      const registros = await listarRegistros(filtrosActuales());
+      pintar(calcular(registros));
+    } catch (error) {
+      avisoError(error);
+      cuerpo.innerHTML = `<tr><td colspan="10" class="sin-datos">${esc(error.message)}</td></tr>`;
+    }
+  }
+
+  function exportar() {
+    if (ultimos.length === 0) return toast('No hay datos para exportar.', 'aviso');
+
+    const cabeceras = ['Fecha', 'Trabajador', 'Partida', 'Paquete', 'Talla', 'Operacion', 'Cantidad', 'Precio unitario', 'Importe', 'Estado'];
+    const filas = ultimos.map((r) => [
+      fecha(r.fecha),
+      r.trabajador,
+      r.partida_codigo,
+      r.paquete_numero,
+      r.paquete_talla,
+      r.operacion,
+      r.cantidad,
+      Number(r.precio_unitario).toFixed(4),
+      Number(r.subtotal).toFixed(2),
+      r.pago_id ? 'Pagado' : 'Pendiente',
+    ]);
+
+    const csv = [cabeceras, ...filas]
+      .map((fila) => fila.map((celda) => `"${String(celda ?? '').replace(/"/g, '""')}"`).join(';'))
+      .join('\r\n');
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const enlace = document.createElement('a');
+    enlace.href = URL.createObjectURL(blob);
+    enlace.download = `registros_${elDesde.value || 'inicio'}_${elHasta.value || 'hoy'}.csv`;
+    enlace.click();
+    URL.revokeObjectURL(enlace.href);
+    toast('Archivo CSV generado.', 'exito');
+  }
+
+  // ------------------------------------------------------------------- init
+
+  async function iniciar() {
+    const params = new URLSearchParams(location.search);
+    elDesde.value = params.get('desde') || inicioDeMes();
+    elHasta.value = params.get('hasta') || hoyISO();
+
+    const [trabajadores, partidas] = await Promise.all([listarTrabajadores(), listarPartidas()]);
+
+    elTrabajador.innerHTML =
+      '<option value="">Todos</option>' +
+      trabajadores.map((t) => `<option value="${esc(t.id)}">${esc(t.nombre)}</option>`).join('');
+
+    elPartida.innerHTML =
+      '<option value="">Todas</option>' +
+      partidas.map((p) => `<option value="${esc(p.id)}">Partida ${esc(p.codigo)}</option>`).join('');
+
+    if (params.get('trabajador')) elTrabajador.value = params.get('trabajador');
+    if (params.get('partida')) elPartida.value = params.get('partida');
+    if (params.get('estado')) elEstado.value = params.get('estado');
+
+    await buscar();
+  }
+
+  qs('#filtrar').addEventListener('click', buscar);
+  qs('#exportar').addEventListener('click', exportar);
+  qs('#limpiar').addEventListener('click', () => {
+    elDesde.value = inicioDeMes();
+    elHasta.value = hoyISO();
+    elTrabajador.value = '';
+    elPartida.value = '';
+    elEstado.value = '';
+    buscar();
+  });
+  [elDesde, elHasta, elTrabajador, elPartida, elEstado].forEach((el) => el.addEventListener('change', buscar));
+
+  iniciar().catch((error) => {
+    avisoError(error);
+    cuerpo.innerHTML = `<tr><td colspan="10" class="sin-datos">${esc(error.message)}</td></tr>`;
+  });
+</script>

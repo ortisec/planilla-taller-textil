@@ -1,0 +1,594 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Icon from '../../components/Icon.astro';
+---
+
+<Layout titulo="Detalle de partida" subtitulo="Operaciones, paquetes y trabajo registrado.">
+  <div slot="acciones">
+    <a class="boton secundario" href="/partidas">
+      <Icon name="volver" size={15} /> Partidas
+    </a>
+    <button type="button" class="boton secundario" id="imprimir">
+      <Icon name="imprimir" size={15} /> Imprimir
+    </button>
+    <a class="boton" id="ir-trabajo" href="/trabajo">
+      <Icon name="documento" size={15} /> Registrar trabajo
+    </a>
+  </div>
+
+  <div id="cargando" class="tarjeta"><div class="tarjeta-cuerpo sin-datos">Cargando partida…</div></div>
+
+  <div id="contenido" class="oculto">
+    <div class="tarjeta">
+      <div class="tarjeta-cuerpo">
+        <div class="encabezado-partida">
+          <div>
+            <div class="fila">
+              <h2 style="font-size:22px" id="partida-codigo">—</h2>
+              <span class="chip" id="partida-estado"></span>
+            </div>
+            <p class="texto-suave mt-1" id="partida-descripcion"></p>
+          </div>
+          <div class="fila">
+            <div class="campo">
+              <span class="etiqueta">Estado</span>
+              <select id="estado" style="min-width:160px">
+                <option value="en_proceso">En proceso</option>
+                <option value="terminada">Terminada</option>
+                <option value="anulada">Anulada</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="rejilla kpi mt-3">
+          <div class="kpi">
+            <div class="kpi-etiqueta"><Icon name="personas" size={15} /> Cliente</div>
+            <div class="kpi-valor" style="font-size:18px" id="partida-cliente">—</div>
+            <div class="kpi-pie" id="partida-fecha"></div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-etiqueta"><Icon name="caja" size={15} /> Paquetes y prendas</div>
+            <div class="kpi-valor" id="partida-paquetes">—</div>
+            <div class="kpi-pie" id="partida-operaciones"></div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-etiqueta"><Icon name="dinero" size={15} /> Precio de la prenda</div>
+            <div class="kpi-valor" id="partida-precio-prenda">—</div>
+            <div class="kpi-pie" id="partida-total"></div>
+          </div>
+          <div class="kpi resaltado">
+            <div class="kpi-etiqueta"><Icon name="grafico" size={15} /> Mano de obra pendiente</div>
+            <div class="kpi-valor" id="partida-pendiente">—</div>
+            <div class="kpi-pie" id="partida-registrado"></div>
+          </div>
+        </div>
+
+        <div id="partida-notas" class="alerta info mt-3 oculto"></div>
+      </div>
+    </div>
+
+    <!-- Operaciones -->
+    <div class="tarjeta">
+      <div class="tarjeta-cabecera">
+        <div>
+          <h2>Operaciones y precios</h2>
+          <p>Precio por prenda de cada operación. Los cambios solo afectan a esta partida.</p>
+        </div>
+        <button type="button" class="boton secundario pequeno" id="importar-catalogo">
+          <Icon name="descargar" size={14} /> Importar del catálogo
+        </button>
+      </div>
+      <div class="tarjeta-cuerpo sin-padding">
+        <div class="tabla-envoltura">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Operación</th>
+                <th class="num" style="width:170px">Precio por prenda</th>
+                <th class="num" style="width:120px">Hechas</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo-operaciones">
+              <tr><td colspan="4" class="sin-datos">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tarjeta-cuerpo" style="border-top:1px solid var(--borde)">
+          <div class="fila">
+            <input type="text" id="nueva-operacion" placeholder="Nombre de la operación" style="max-width:280px" />
+            <input type="number" id="nueva-operacion-precio" class="precio" placeholder="0.10" min="0" step="0.01" />
+            <button type="button" class="boton pequeno" id="agregar-operacion">
+              <Icon name="mas" size={14} /> Agregar operación
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Paquetes -->
+    <div class="tarjeta">
+      <div class="tarjeta-cabecera">
+        <div>
+          <h2>Paquetes</h2>
+          <p>Cada paquete tiene una talla y una cantidad de prendas.</p>
+        </div>
+      </div>
+      <div class="tarjeta-cuerpo sin-padding">
+        <div class="tabla-envoltura">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th class="num" style="width:110px">Paquete</th>
+                <th style="width:130px">Talla</th>
+                <th class="num" style="width:140px">Prendas</th>
+                <th class="num">Total del paquete</th>
+                <th class="num">Registrado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo-paquetes">
+              <tr><td colspan="6" class="sin-datos">Cargando…</td></tr>
+            </tbody>
+            <tfoot id="pie-paquetes" class="oculto">
+              <tr>
+                <td colspan="2">Totales</td>
+                <td class="num" id="total-prendas">0</td>
+                <td class="num" id="total-partida">S/ 0.00</td>
+                <td class="num" id="total-registrado">S/ 0.00</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="tarjeta-cuerpo" style="border-top:1px solid var(--borde)">
+          <div class="formulario-rejilla">
+            <div class="campo">
+              <label for="gen-cantidad">Generar paquetes</label>
+              <input type="number" id="gen-cantidad" value="1" min="1" step="1" />
+            </div>
+            <div class="campo">
+              <label for="gen-desde">Desde el número</label>
+              <input type="number" id="gen-desde" value="1" min="1" step="1" />
+            </div>
+            <div class="campo">
+              <label for="gen-talla">Talla</label>
+              <input type="text" id="gen-talla" placeholder="M" />
+            </div>
+            <div class="campo">
+              <label for="gen-prendas">Prendas por paquete</label>
+              <input type="number" id="gen-prendas" value="24" min="1" step="1" />
+            </div>
+            <div class="campo">
+              <label>&nbsp;</label>
+              <button type="button" class="boton secundario" id="generar-paquetes">Generar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Registros -->
+    <div class="tarjeta">
+      <div class="tarjeta-cabecera">
+        <div>
+          <h2>Trabajo registrado</h2>
+          <p>Detalle del trabajo hecho en esta partida.</p>
+        </div>
+        <a class="boton sutil pequeno" id="ver-registros" href="/registros">Ver en Registros</a>
+      </div>
+      <div class="tarjeta-cuerpo sin-padding">
+        <div class="tabla-envoltura">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Trabajador</th>
+                <th>Paquete</th>
+                <th>Operación</th>
+                <th class="num">Cant.</th>
+                <th class="num">Importe</th>
+                <th class="num">Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo-registros">
+              <tr><td colspan="8" class="sin-datos">Cargando…</td></tr>
+            </tbody>
+            <tfoot id="pie-registros" class="oculto">
+              <tr>
+                <td colspan="5">Total registrado</td>
+                <td class="num" id="total-registros">S/ 0.00</td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import {
+    obtenerPartida,
+    actualizarPartida,
+    listarPartidaOperaciones,
+    crearPartidaOperacion,
+    actualizarPartidaOperacion,
+    eliminarPartidaOperacion,
+    importarCatalogoApartida,
+    listarPaquetes,
+    crearPaquetes,
+    actualizarPaquete,
+    eliminarPaquete,
+    listarRegistros,
+    eliminarRegistro,
+  } from '../../lib/api.js';
+  import { soles, numero, fecha, claseEstadoPartida, estadoPartida } from '../../lib/format.js';
+  import { qs, esc, toast, avisoError, confirmar, cargando } from '../../lib/ui.js';
+
+  const id = new URLSearchParams(location.search).get('id');
+
+  const datos = {
+    partida: null,
+    operaciones: [],
+    paquetes: [],
+    registros: [],
+  };
+
+  const cuerpoOperaciones = qs('#cuerpo-operaciones');
+  const cuerpoPaquetes = qs('#cuerpo-paquetes');
+  const cuerpoRegistros = qs('#cuerpo-registros');
+
+  const precioPrenda = () => datos.operaciones.reduce((s, o) => s + Number(o.precio), 0);
+  const totalPrendas = () => datos.paquetes.reduce((s, q) => s + Number(q.cantidad), 0);
+
+  // ------------------------------------------------------------- encabezado
+
+  function pintarEncabezado() {
+    const p = datos.partida;
+    qs('#partida-codigo').textContent = `Partida ${p.codigo}`;
+    qs('#partida-descripcion').textContent = p.descripcion ?? 'Sin descripción';
+    qs('#partida-estado').className = `chip ${claseEstadoPartida(p.estado)}`;
+    qs('#partida-estado').textContent = estadoPartida(p.estado);
+    qs('#estado').value = p.estado;
+    qs('#partida-cliente').textContent = p.cliente ?? 'Sin cliente';
+    qs('#partida-fecha').textContent = `Fecha: ${fecha(p.fecha)}`;
+    qs('#partida-paquetes').textContent = `${numero(datos.paquetes.length)} paquetes`;
+    qs('#partida-operaciones').textContent = `${numero(totalPrendas())} prendas · ${numero(datos.operaciones.length)} operaciones`;
+
+    const precio = precioPrenda();
+    qs('#partida-precio-prenda').textContent = soles(precio);
+    qs('#partida-total').textContent = `Total partida: ${soles(precio * totalPrendas())}`;
+    qs('#partida-pendiente').textContent = soles(p.monto_pendiente);
+    qs('#partida-registrado').textContent = `Registrado: ${soles(p.monto_registrado)} de ${soles(precio * totalPrendas())}`;
+
+    const notas = qs('#partida-notas');
+    if (p.notas) {
+      notas.classList.remove('oculto');
+      notas.textContent = p.notas;
+    } else {
+      notas.classList.add('oculto');
+    }
+
+    qs('#ir-trabajo').href = `/trabajo?partida=${encodeURIComponent(p.id)}`;
+    qs('#ver-registros').href = `/registros?partida=${encodeURIComponent(p.id)}`;
+  }
+
+  // ------------------------------------------------------------ operaciones
+
+  function pintarOperaciones() {
+    if (datos.operaciones.length === 0) {
+      cuerpoOperaciones.innerHTML = '<tr><td colspan="4" class="sin-datos">Esta partida no tiene operaciones.</td></tr>';
+      return;
+    }
+
+    cuerpoOperaciones.innerHTML = datos.operaciones
+      .map((op) => {
+        const hechas = datos.registros
+          .filter((r) => r.operacion_id === op.id)
+          .reduce((s, r) => s + Number(r.cantidad), 0);
+        return `
+        <tr data-operacion="${esc(op.id)}">
+          <td><input type="text" value="${esc(op.nombre)}" data-nombre /></td>
+          <td class="num"><input type="number" class="precio" min="0" step="0.01" value="${Number(op.precio)}" data-precio /></td>
+          <td class="num texto-suave">${esc(numero(hechas))}</td>
+          <td class="acciones-fila">
+            <button type="button" class="boton icono peligro" data-borrar-operacion="${esc(op.id)}" title="Eliminar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </td>
+        </tr>`;
+      })
+      .join('');
+
+    cuerpoOperaciones.querySelectorAll('tr[data-operacion]').forEach((fila) => {
+      const operacionId = fila.dataset.operacion;
+      const nombre = fila.querySelector('[data-nombre]');
+      const precio = fila.querySelector('[data-precio]');
+
+      const guardar = async () => {
+        try {
+          await actualizarPartidaOperacion(operacionId, { nombre: nombre.value.trim(), precio: Number(precio.value) || 0 });
+          toast('Operación actualizada.', 'exito');
+          await recargar();
+        } catch (error) {
+          avisoError(error);
+        }
+      };
+
+      nombre.addEventListener('change', guardar);
+      precio.addEventListener('change', guardar);
+    });
+
+    cuerpoOperaciones.querySelectorAll('[data-borrar-operacion]').forEach((boton) => {
+      boton.addEventListener('click', async () => {
+        const ok = await confirmar({
+          titulo: 'Eliminar operación',
+          mensaje: 'Se eliminarán también los registros de trabajo asociados a esta operación en la partida.',
+          textoAceptar: 'Eliminar',
+          peligro: true,
+        });
+        if (!ok) return;
+        try {
+          await eliminarPartidaOperacion(boton.dataset.borrarOperacion);
+          toast('Operación eliminada.', 'exito');
+          await recargar();
+        } catch (error) {
+          avisoError(error);
+        }
+      });
+    });
+  }
+
+  // --------------------------------------------------------------- paquetes
+
+  function pintarPaquetes() {
+    const precio = precioPrenda();
+
+    if (datos.paquetes.length === 0) {
+      cuerpoPaquetes.innerHTML = '<tr><td colspan="6" class="sin-datos">Esta partida no tiene paquetes.</td></tr>';
+      qs('#pie-paquetes').classList.add('oculto');
+      return;
+    }
+
+    cuerpoPaquetes.innerHTML = datos.paquetes
+      .map(
+        (q) => `
+        <tr data-paquete="${esc(q.id)}">
+          <td class="num"><input type="number" class="numero" min="1" step="1" value="${esc(q.numero)}" data-numero /></td>
+          <td><input type="text" class="talla" value="${esc(q.talla)}" data-talla /></td>
+          <td class="num"><input type="number" class="cantidad" min="1" step="1" value="${esc(q.cantidad)}" data-cantidad /></td>
+          <td class="num negrita">${esc(soles(q.total_paquete ?? precio * q.cantidad))}</td>
+          <td class="num texto-suave">${esc(soles(q.monto_registrado))}</td>
+          <td class="acciones-fila">
+            <a class="boton icono" href="/trabajo?partida=${esc(datos.partida.id)}&paquete=${esc(q.id)}" title="Registrar trabajo">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            </a>
+            <button type="button" class="boton icono peligro" data-borrar-paquete="${esc(q.id)}" title="Eliminar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </td>
+        </tr>`
+      )
+      .join('');
+
+    cuerpoPaquetes.querySelectorAll('tr[data-paquete]').forEach((fila) => {
+      const paqueteId = fila.dataset.paquete;
+      const numero = fila.querySelector('[data-numero]');
+      const talla = fila.querySelector('[data-talla]');
+      const cantidad = fila.querySelector('[data-cantidad]');
+
+      const guardar = async () => {
+        try {
+          await actualizarPaquete(paqueteId, {
+            numero: Number(numero.value) || 1,
+            talla: talla.value.trim(),
+            cantidad: Number(cantidad.value) || 1,
+          });
+          await recargar();
+        } catch (error) {
+          avisoError(error);
+        }
+      };
+
+      numero.addEventListener('change', guardar);
+      talla.addEventListener('change', guardar);
+      cantidad.addEventListener('change', guardar);
+    });
+
+    cuerpoPaquetes.querySelectorAll('[data-borrar-paquete]').forEach((boton) => {
+      boton.addEventListener('click', async () => {
+        const ok = await confirmar({
+          titulo: 'Eliminar paquete',
+          mensaje: 'Se eliminarán también los registros de trabajo de este paquete.',
+          textoAceptar: 'Eliminar',
+          peligro: true,
+        });
+        if (!ok) return;
+        try {
+          await eliminarPaquete(boton.dataset.borrarPaquete);
+          toast('Paquete eliminado.', 'exito');
+          await recargar();
+        } catch (error) {
+          avisoError(error);
+        }
+      });
+    });
+
+    qs('#total-prendas').textContent = numero(totalPrendas());
+    qs('#total-partida').textContent = soles(precio * totalPrendas());
+    qs('#total-registrado').textContent = soles(datos.partida.monto_registrado);
+    qs('#pie-paquetes').classList.remove('oculto');
+  }
+
+  // -------------------------------------------------------------- registros
+
+  function pintarRegistros() {
+    if (datos.registros.length === 0) {
+      cuerpoRegistros.innerHTML = '<tr><td colspan="8" class="sin-datos">Todavía no hay trabajo registrado en esta partida.</td></tr>';
+      qs('#pie-registros').classList.add('oculto');
+      return;
+    }
+
+    cuerpoRegistros.innerHTML = datos.registros
+      .map(
+        (r) => `
+        <tr>
+          <td>${esc(fecha(r.fecha))}</td>
+          <td class="negrita">${esc(r.trabajador)}</td>
+          <td>${esc(r.paquete_numero)} · ${esc(r.paquete_talla)}</td>
+          <td>${esc(r.operacion)}</td>
+          <td class="num">${esc(numero(r.cantidad))}</td>
+          <td class="num negrita">${esc(soles(r.subtotal))}</td>
+          <td class="num">${r.pago_id ? '<span class="chip exito">Pagado</span>' : '<span class="chip alerta">Pendiente</span>'}</td>
+          <td class="acciones-fila">
+            <button type="button" class="boton icono peligro" data-borrar-registro="${esc(r.id)}" title="Eliminar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </td>
+        </tr>`
+      )
+      .join('');
+
+    const total = datos.registros.reduce((s, r) => s + Number(r.subtotal), 0);
+    qs('#total-registros').textContent = soles(total);
+    qs('#pie-registros').classList.remove('oculto');
+
+    cuerpoRegistros.querySelectorAll('[data-borrar-registro]').forEach((boton) => {
+      boton.addEventListener('click', async () => {
+        const ok = await confirmar({
+          titulo: 'Eliminar registro de trabajo',
+          mensaje: '¿Seguro que deseas eliminar esta línea?',
+          textoAceptar: 'Eliminar',
+          peligro: true,
+        });
+        if (!ok) return;
+        try {
+          await eliminarRegistro(boton.dataset.borrarRegistro);
+          toast('Registro eliminado.', 'exito');
+          await recargar();
+        } catch (error) {
+          avisoError(error);
+        }
+      });
+    });
+  }
+
+  // ----------------------------------------------------------------- carga
+
+  async function recargar() {
+    const [partida, operaciones, paquetes, registros] = await Promise.all([
+      obtenerPartida(id),
+      listarPartidaOperaciones(id),
+      listarPaquetes(id),
+      listarRegistros({ partidaId: id, limite: 800 }),
+    ]);
+
+    if (!partida) {
+      qs('#cargando').innerHTML = '<div class="tarjeta-cuerpo sin-datos">No se encontró la partida.</div>';
+      return;
+    }
+
+    datos.partida = partida;
+    datos.operaciones = operaciones;
+    datos.paquetes = paquetes;
+    datos.registros = registros;
+
+    pintarEncabezado();
+    pintarOperaciones();
+    pintarPaquetes();
+    pintarRegistros();
+
+    qs('#cargando').classList.add('oculto');
+    qs('#contenido').classList.remove('oculto');
+  }
+
+  // ----------------------------------------------------------------- init
+
+  qs('#estado').addEventListener('change', async (e) => {
+    try {
+      await actualizarPartida(id, { estado: e.target.value });
+      toast('Estado actualizado.', 'exito');
+      await recargar();
+    } catch (error) {
+      avisoError(error);
+    }
+  });
+
+  qs('#agregar-operacion').addEventListener('click', async (e) => {
+    const nombre = qs('#nueva-operacion').value.trim();
+    const precio = Number(qs('#nueva-operacion-precio').value) || 0;
+    if (!nombre) return toast('Escribe el nombre de la operación.', 'aviso');
+    const boton = e.currentTarget;
+    try {
+      cargando(boton, true, 'Agregando…');
+      await crearPartidaOperacion(id, { nombre, precio });
+      qs('#nueva-operacion').value = '';
+      qs('#nueva-operacion-precio').value = '';
+      toast('Operación agregada.', 'exito');
+      await recargar();
+    } catch (error) {
+      avisoError(error);
+    } finally {
+      cargando(boton, false);
+    }
+  });
+
+  qs('#importar-catalogo').addEventListener('click', async (e) => {
+    const boton = e.currentTarget;
+    try {
+      cargando(boton, true, 'Importando…');
+      const nuevas = await importarCatalogoApartida(id);
+      toast(nuevas.length ? `Se importaron ${nuevas.length} operaciones.` : 'La partida ya tiene todas las operaciones del catálogo.', nuevas.length ? 'exito' : 'aviso');
+      await recargar();
+    } catch (error) {
+      avisoError(error);
+    } finally {
+      cargando(boton, false);
+    }
+  });
+
+  qs('#generar-paquetes').addEventListener('click', async (e) => {
+    const boton = e.currentTarget;
+    const cantidad = Number(qs('#gen-cantidad').value) || 0;
+    const desde = Number(qs('#gen-desde').value) || 1;
+    const talla = qs('#gen-talla').value.trim();
+    const prendas = Number(qs('#gen-prendas').value) || 0;
+
+    if (cantidad <= 0 || !talla || prendas <= 0) {
+      return toast('Completa cantidad, talla y prendas por paquete.', 'aviso');
+    }
+
+    const lista = Array.from({ length: cantidad }, (_, i) => ({
+      numero: desde + i,
+      talla,
+      cantidad: prendas,
+    }));
+
+    try {
+      cargando(boton, true, 'Generando…');
+      await crearPaquetes(id, lista);
+      qs('#gen-desde').value = desde + cantidad;
+      toast(`${cantidad} paquete(s) agregados.`, 'exito');
+      await recargar();
+    } catch (error) {
+      avisoError(error);
+    } finally {
+      cargando(boton, false);
+    }
+  });
+
+  qs('#imprimir').addEventListener('click', () => window.print());
+
+  if (!id) {
+    qs('#cargando').innerHTML = '<div class="tarjeta-cuerpo sin-datos">Falta el identificador de la partida.</div>';
+  } else {
+    recargar().catch((error) => {
+      avisoError(error);
+      qs('#cargando').innerHTML = `<div class="tarjeta-cuerpo sin-datos">${esc(error.message)}</div>`;
+    });
+  }
+</script>

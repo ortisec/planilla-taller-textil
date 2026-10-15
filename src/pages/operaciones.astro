@@ -1,0 +1,245 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
+---
+
+<Layout titulo="Catálogo de operaciones" subtitulo="Operaciones base con su precio por prenda. Al crear una partida se copian y puedes ajustarlas sin afectar a las demás.">
+  <div class="alerta info mb-2">
+    <Icon name="aviso" size={18} />
+    <div>
+      El catálogo es una plantilla: al crear una partida se copian las operaciones y sus precios.
+      Cambiar un precio aquí <strong>no</strong> modifica las partidas ya creadas.
+    </div>
+  </div>
+
+  <div class="tarjeta">
+    <div class="tarjeta-cabecera">
+      <div>
+        <h2>Nueva operación</h2>
+        <p>Agrega operaciones al catálogo para usarlas en las próximas partidas.</p>
+      </div>
+    </div>
+    <div class="tarjeta-cuerpo">
+      <div class="formulario-rejilla">
+        <div class="campo">
+          <label for="nombre">Nombre de la operación *</label>
+          <input type="text" id="nombre" placeholder="Ej. Unir Hombros" />
+        </div>
+        <div class="campo">
+          <label for="precio">Precio por prenda (S/)</label>
+          <input type="number" id="precio" min="0" step="0.01" value="0.10" />
+        </div>
+        <div class="campo">
+          <label>&nbsp;</label>
+          <button type="button" class="boton" id="agregar">
+            <Icon name="mas" size={15} /> Agregar al catálogo
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tarjeta">
+    <div class="tarjeta-cabecera">
+      <div>
+        <h2>Operaciones</h2>
+        <p>Edita el nombre o el precio directamente en la tabla.</p>
+      </div>
+      <div class="fila">
+        <input type="search" id="buscar" placeholder="Buscar…" style="max-width:220px" />
+        <label class="casilla texto-pequeno"><input type="checkbox" id="solo-activas" /> Solo activas</label>
+      </div>
+    </div>
+    <div class="tarjeta-cuerpo sin-padding">
+      <div class="tabla-envoltura">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Operación</th>
+              <th class="num" style="width:190px">Precio por prenda</th>
+              <th class="num" style="width:170px">Partidas que la usan</th>
+              <th class="num" style="width:110px">Activa</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo">
+            <tr><td colspan="5" class="sin-datos">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tarjeta">
+    <div class="tarjeta-cabecera">
+      <div>
+        <h2>Plantilla rápida</h2>
+        <p>Carga un conjunto habitual de operaciones si el catálogo está vacío.</p>
+      </div>
+      <button type="button" class="boton secundario pequeno" id="cargar-plantilla">
+        <Icon name="descargar" size={14} /> Cargar operaciones sugeridas
+      </button>
+    </div>
+    <div class="tarjeta-cuerpo">
+      <p class="texto-suave texto-pequeno">
+        Unir Hombros, Cerrar Costados, Pegar Mangas, Ruedo de Manga, Ruedo de Basta, Pegar Cuello,
+        Pegar Etiqueta, Hacer Ojal, Pegar Botón, Atraque, Planchado y Empaquetado.
+      </p>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { listarCatalogo, crearOperacionCatalogo, actualizarOperacionCatalogo, eliminarOperacionCatalogo } from '../lib/api.js';
+  import { precioUnitario, numero } from '../lib/format.js';
+  import { qs, esc, toast, avisoError, confirmar, cargando } from '../lib/ui.js';
+
+  const PLANTILLA = [
+    ['Unir Hombros', 0.1],
+    ['Cerrar Costados', 0.12],
+    ['Pegar Mangas', 0.15],
+    ['Ruedo de Manga', 0.08],
+    ['Ruedo de Basta', 0.08],
+    ['Pegar Cuello', 0.18],
+    ['Pegar Etiqueta', 0.05],
+    ['Hacer Ojal', 0.05],
+    ['Pegar Botón', 0.05],
+    ['Atraque', 0.06],
+    ['Planchado', 0.1],
+    ['Empaquetado', 0.05],
+  ];
+
+  let operaciones = [];
+  const cuerpo = qs('#cuerpo');
+
+  async function cargar() {
+    operaciones = await listarCatalogo();
+    pintar();
+  }
+
+  function pintar() {
+    const filtro = qs('#buscar').value.trim().toLowerCase();
+    const soloActivas = qs('#solo-activas').checked;
+
+    let lista = operaciones;
+    if (filtro) lista = lista.filter((o) => o.nombre.toLowerCase().includes(filtro));
+    if (soloActivas) lista = lista.filter((o) => o.activa);
+
+    if (lista.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="5" class="sin-datos">No hay operaciones que coincidan.</td></tr>';
+      return;
+    }
+
+    cuerpo.innerHTML = lista
+      .map(
+        (o) => `
+      <tr data-operacion="${esc(o.id)}">
+        <td><input type="text" value="${esc(o.nombre)}" data-campo="nombre" /></td>
+        <td class="num"><input type="number" class="precio" min="0" step="0.01" value="${Number(o.precio_base)}" data-campo="precio_base" /></td>
+        <td class="num ${o.activa ? '' : 'texto-suave'}">${esc(numero(o.usos ?? 0))}</td>
+        <td class="num"><input type="checkbox" data-campo="activa" ${o.activa ? 'checked' : ''} /></td>
+        <td class="acciones-fila">
+          <button type="button" class="boton icono peligro" data-borrar="${esc(o.id)}" title="Eliminar del catálogo">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </td>
+      </tr>`
+      )
+      .join('');
+
+    cuerpo.querySelectorAll('tr[data-operacion]').forEach((fila) => {
+      const id = fila.dataset.operacion;
+      fila.querySelectorAll('[data-campo]').forEach((control) => {
+        control.addEventListener('change', async () => {
+          const campo = control.dataset.campo;
+          let valor;
+          if (campo === 'activa') valor = control.checked;
+          else if (campo === 'precio_base') valor = Number(control.value) || 0;
+          else valor = control.value.trim();
+
+          try {
+            await actualizarOperacionCatalogo(id, { [campo]: valor });
+            toast('Catálogo actualizado.', 'exito');
+            await cargar();
+          } catch (error) {
+            avisoError(error);
+            await cargar();
+          }
+        });
+      });
+    });
+
+    cuerpo.querySelectorAll('[data-borrar]').forEach((boton) => {
+      boton.addEventListener('click', () => borrar(boton.dataset.borrar));
+    });
+  }
+
+  async function agregar() {
+    const nombre = qs('#nombre').value.trim();
+    const precio = Number(qs('#precio').value) || 0;
+    if (!nombre) return toast('Escribe el nombre de la operación.', 'aviso');
+
+    const boton = qs('#agregar');
+    try {
+      cargando(boton, true, 'Agregando…');
+      await crearOperacionCatalogo({ nombre, precio_base: precio });
+      qs('#nombre').value = '';
+      toast('Operación agregada al catálogo.', 'exito');
+      await cargar();
+    } catch (error) {
+      avisoError(error);
+    } finally {
+      cargando(boton, false);
+    }
+  }
+
+  async function borrar(id) {
+    const o = operaciones.find((x) => x.id === id);
+    const ok = await confirmar({
+      titulo: 'Eliminar del catálogo',
+      mensaje: `¿Eliminar "${o?.nombre ?? ''}" del catálogo? Las partidas ya creadas conservan su copia con su precio.`,
+      textoAceptar: 'Eliminar',
+      peligro: true,
+    });
+    if (!ok) return;
+
+    try {
+      await eliminarOperacionCatalogo(id);
+      toast('Operación eliminada del catálogo.', 'exito');
+      await cargar();
+    } catch (error) {
+      avisoError(error);
+    }
+  }
+
+  async function cargarPlantilla() {
+    const existentes = new Set(operaciones.map((o) => o.nombre.toLowerCase()));
+    const nuevas = PLANTILLA.filter(([nombre]) => !existentes.has(nombre.toLowerCase()));
+
+    if (nuevas.length === 0) return toast('El catálogo ya tiene todas las operaciones sugeridas.', 'aviso');
+
+    const boton = qs('#cargar-plantilla');
+    try {
+      cargando(boton, true, 'Cargando…');
+      for (const [nombre, precio] of nuevas) {
+        await crearOperacionCatalogo({ nombre, precio_base: precio });
+      }
+      toast(`Se agregaron ${nuevas.length} operaciones.`, 'exito');
+      await cargar();
+    } catch (error) {
+      avisoError(error);
+    } finally {
+      cargando(boton, false);
+    }
+  }
+
+  qs('#agregar').addEventListener('click', agregar);
+  qs('#buscar').addEventListener('input', pintar);
+  qs('#solo-activas').addEventListener('change', pintar);
+  qs('#cargar-plantilla').addEventListener('click', cargarPlantilla);
+
+  cargar().catch((error) => {
+    avisoError(error);
+    cuerpo.innerHTML = `<tr><td colspan="5" class="sin-datos">${esc(error.message)}</td></tr>`;
+  });
+</script>

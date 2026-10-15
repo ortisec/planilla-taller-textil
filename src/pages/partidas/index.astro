@@ -1,0 +1,578 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Icon from '../../components/Icon.astro';
+---
+
+<Layout titulo="Partidas" subtitulo="Crea cada número de partida con sus operaciones, precios y paquetes.">
+  <div slot="acciones">
+    <button type="button" class="boton" id="alternar-formulario">
+      <Icon name="mas" size={16} /> Nueva partida
+    </button>
+  </div>
+
+  <div class="tarjeta oculto" id="panel-nueva">
+    <div class="tarjeta-cabecera">
+      <div>
+        <h2>Nueva partida</h2>
+        <p>Define las operaciones con su precio por prenda y los paquetes con su talla y cantidad.</p>
+      </div>
+      <button type="button" class="boton sutil pequeno" id="cerrar-formulario">
+        <Icon name="cerrar" size={15} /> Cerrar
+      </button>
+    </div>
+
+    <div class="tarjeta-cuerpo pasos-lista">
+      <!-- 1. Datos generales -->
+      <div class="bloque">
+        <div class="bloque-cabecera"><span>1. Datos de la partida</span></div>
+        <div class="bloque-cuerpo">
+          <div class="formulario-rejilla">
+            <div class="campo">
+              <label for="codigo">Número de partida *</label>
+              <input type="text" id="codigo" placeholder="Ej. 123" />
+            </div>
+            <div class="campo">
+              <label for="cliente">Cliente</label>
+              <input type="text" id="cliente" placeholder="Ej. Textiles del Norte SAC" />
+            </div>
+            <div class="campo">
+              <label for="fecha">Fecha</label>
+              <input type="date" id="fecha" />
+            </div>
+            <div class="campo">
+              <label for="descripcion">Descripción</label>
+              <input type="text" id="descripcion" placeholder="Ej. Polo básico manga corta" />
+            </div>
+            <div class="campo">
+              <label for="notas-partida">Notas</label>
+              <input type="text" id="notas-partida" placeholder="Opcional" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Operaciones -->
+      <div class="bloque">
+        <div class="bloque-cabecera">
+          <span>2. Operaciones y precios (S/ por prenda)</span>
+          <span class="fila">
+            <button type="button" class="boton sutil pequeno" id="marcar-todas">Marcar todas</button>
+            <button type="button" class="boton sutil pequeno" id="desmarcar-todas">Desmarcar</button>
+          </span>
+        </div>
+        <div class="bloque-cuerpo">
+          <div class="tabla-envoltura">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th style="width:52px"></th>
+                  <th>Operación</th>
+                  <th class="num">Precio por prenda</th>
+                </tr>
+              </thead>
+              <tbody id="cuerpo-catalogo">
+                <tr><td colspan="3" class="sin-datos">Cargando catálogo…</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="fila mt-2">
+            <input type="text" id="nueva-operacion" placeholder="Otra operación (nombre)" style="max-width:260px" />
+            <input type="number" id="nuevo-operacion-precio" class="precio" placeholder="0.10" min="0" step="0.01" />
+            <button type="button" class="boton secundario pequeno" id="agregar-operacion">
+              <Icon name="mas" size={14} /> Agregar
+            </button>
+            <label class="casilla texto-pequeno">
+              <input type="checkbox" id="guardar-en-catalogo" checked /> Guardar también en el catálogo
+            </label>
+          </div>
+
+          <div id="operaciones-personalizadas" class="mt-2"></div>
+        </div>
+      </div>
+
+      <!-- 3. Paquetes -->
+      <div class="bloque">
+        <div class="bloque-cabecera"><span>3. Paquetes (talla y cantidad de prendas)</span></div>
+        <div class="bloque-cuerpo">
+          <div class="formulario-rejilla">
+            <div class="campo">
+              <label for="gen-cantidad">Generar</label>
+              <input type="number" id="gen-cantidad" value="1" min="1" step="1" />
+            </div>
+            <div class="campo">
+              <label for="gen-desde">Desde el número</label>
+              <input type="number" id="gen-desde" value="1" min="1" step="1" />
+            </div>
+            <div class="campo">
+              <label for="gen-talla">Talla</label>
+              <input type="text" id="gen-talla" placeholder="M" />
+            </div>
+            <div class="campo">
+              <label for="gen-prendas">Prendas por paquete</label>
+              <input type="number" id="gen-prendas" value="24" min="1" step="1" />
+            </div>
+            <div class="campo">
+              <label>&nbsp;</label>
+              <button type="button" class="boton secundario" id="generar-paquetes">Generar paquetes</button>
+            </div>
+          </div>
+
+          <div class="tabla-envoltura mt-2">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th class="num" style="width:110px">Paquete</th>
+                  <th style="width:130px">Talla</th>
+                  <th class="num" style="width:150px">Prendas</th>
+                  <th class="num">Total del paquete</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="cuerpo-paquetes">
+                <tr><td colspan="5" class="sin-datos">Aún no agregas paquetes.</td></tr>
+              </tbody>
+              <tfoot id="pie-paquetes" class="oculto">
+                <tr>
+                  <td colspan="2">Totales</td>
+                  <td class="num" id="total-prendas">0</td>
+                  <td class="num" id="total-partida">S/ 0.00</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="fila separado">
+        <span class="pista" id="pista-crear"></span>
+        <button type="button" class="boton" id="crear">
+          <Icon name="check" size={16} /> Crear partida
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tarjeta">
+    <div class="tarjeta-cabecera">
+      <div>
+        <h2>Listado de partidas</h2>
+        <p>Haz clic en una partida para ver su detalle, avance y registros.</p>
+      </div>
+      <input type="search" id="buscar" placeholder="Buscar por número o cliente…" style="max-width:280px" />
+    </div>
+    <div class="tarjeta-cuerpo sin-padding">
+      <div class="tabla-envoltura">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Partida</th>
+              <th>Cliente</th>
+              <th>Fecha</th>
+              <th class="num">Paq.</th>
+              <th class="num">Prendas</th>
+              <th class="num">Precio prenda</th>
+              <th class="num">Total partida</th>
+              <th class="num">Registrado</th>
+              <th class="num">Pendiente</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo-partidas">
+            <tr><td colspan="11" class="sin-datos">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import {
+    listarPartidas,
+    listarCatalogo,
+    crearPartida,
+    crearOperacionCatalogo,
+    eliminarPartida,
+  } from '../../lib/api.js';
+  import { soles, precioUnitario, numero, hoyISO, fecha, claseEstadoPartida, estadoPartida } from '../../lib/format.js';
+  import { qs, esc, toast, avisoError, confirmar, cargando } from '../../lib/ui.js';
+
+  const datos = {
+    partidas: [],
+    catalogo: [],
+    seleccion: new Map(), // operacion_id -> precio
+    personalizadas: [], // {nombre, precio}
+    paquetes: [], // {numero, talla, cantidad}
+  };
+
+  const cuerpoCatalogo = qs('#cuerpo-catalogo');
+  const cuerpoPaquetes = qs('#cuerpo-paquetes');
+  const piePaquetes = qs('#pie-paquetes');
+  const cuerpoPartidas = qs('#cuerpo-partidas');
+  const panel = qs('#panel-nueva');
+  const botonCrear = qs('#crear');
+  const pistaCrear = qs('#pista-crear');
+
+  // ------------------------------------------------------------ listado
+
+  function filaPartida(p) {
+    const activa = p.estado !== 'anulada';
+    return `
+      <tr data-partida="${esc(p.id)}">
+        <td>
+          <a class="negrita" href="/partidas/detalle?id=${esc(p.id)}">${esc(p.codigo)}</a>
+          <div class="texto-suave texto-pequeno">${esc(p.descripcion ?? '')}</div>
+        </td>
+        <td>${esc(p.cliente ?? '—')}</td>
+        <td>${esc(fecha(p.fecha))}</td>
+        <td class="num">${esc(numero(p.num_paquetes))}</td>
+        <td class="num">${esc(numero(p.total_prendas))}</td>
+        <td class="num">${esc(soles(p.precio_prenda))}</td>
+        <td class="num negrita">${esc(soles(p.total_partida))}</td>
+        <td class="num">${esc(soles(p.monto_registrado))}</td>
+        <td class="num">${esc(soles(p.monto_pendiente))}</td>
+        <td><span class="chip ${claseEstadoPartida(p.estado)}">${esc(estadoPartida(p.estado))}</span></td>
+        <td class="acciones-fila">
+          <a class="boton icono" href="/trabajo?partida=${esc(p.id)}" title="Registrar trabajo">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          </a>
+          <button type="button" class="boton icono peligro" data-borrar="${esc(p.id)}" ${activa ? '' : 'disabled'} title="Eliminar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </td>
+      </tr>`;
+  }
+
+  function pintarPartidas() {
+    const filtro = (qs('#buscar').value || '').trim().toLowerCase();
+    const lista = filtro
+      ? datos.partidas.filter(
+          (p) =>
+            String(p.codigo).toLowerCase().includes(filtro) ||
+            String(p.cliente ?? '').toLowerCase().includes(filtro) ||
+            String(p.descripcion ?? '').toLowerCase().includes(filtro)
+        )
+      : datos.partidas;
+
+    cuerpoPartidas.innerHTML = lista.length
+      ? lista.map(filaPartida).join('')
+      : '<tr><td colspan="11" class="sin-datos">No hay partidas que coincidan.</td></tr>';
+
+    cuerpoPartidas.querySelectorAll('[data-borrar]').forEach((boton) => {
+      boton.addEventListener('click', () => borrarPartida(boton.dataset.borrar));
+    });
+  }
+
+  async function cargarPartidas() {
+    datos.partidas = await listarPartidas();
+    pintarPartidas();
+  }
+
+  async function borrarPartida(id) {
+    const partida = datos.partidas.find((p) => p.id === id);
+    const ok = await confirmar({
+      titulo: `Eliminar partida ${partida?.codigo ?? ''}`,
+      mensaje: 'Se eliminarán también sus operaciones, paquetes y registros de trabajo asociados. Esta acción no se puede deshacer.',
+      textoAceptar: 'Eliminar partida',
+      peligro: true,
+    });
+    if (!ok) return;
+    try {
+      await eliminarPartida(id);
+      toast('Partida eliminada.', 'exito');
+      await cargarPartidas();
+    } catch (error) {
+      avisoError(error);
+    }
+  }
+
+  // --------------------------------------------------------- operaciones
+
+  function pintarCatalogo() {
+    if (datos.catalogo.length === 0) {
+      cuerpoCatalogo.innerHTML = '<tr><td colspan="3" class="sin-datos">El catálogo está vacío. Agrega operaciones abajo.</td></tr>';
+      actualizarTotales();
+      return;
+    }
+
+    cuerpoCatalogo.innerHTML = datos.catalogo
+      .map((op) => {
+        const marcada = datos.seleccion.has(op.id);
+        const precio = marcada ? datos.seleccion.get(op.id) : op.precio_base;
+        return `
+          <tr data-catalogo="${esc(op.id)}">
+            <td><input type="checkbox" data-marcar ${marcada ? 'checked' : ''} /></td>
+            <td class="negrita">${esc(op.nombre)}${op.activa ? '' : ' <span class="chip">inactiva</span>'}</td>
+            <td class="num"><input type="number" class="precio" min="0" step="0.01" value="${Number(precio)}" data-precio ${marcada ? '' : 'disabled'} /></td>
+          </tr>`;
+      })
+      .join('');
+
+    cuerpoCatalogo.querySelectorAll('tr[data-catalogo]').forEach((fila) => {
+      const id = fila.dataset.catalogo;
+      const casilla = fila.querySelector('[data-marcar]');
+      const precio = fila.querySelector('[data-precio]');
+
+      casilla.addEventListener('change', () => {
+        if (casilla.checked) datos.seleccion.set(id, Number(precio.value) || 0);
+        else datos.seleccion.delete(id);
+        precio.disabled = !casilla.checked;
+        actualizarTotales();
+      });
+
+      precio.addEventListener('input', () => {
+        if (datos.seleccion.has(id)) datos.seleccion.set(id, Number(precio.value) || 0);
+        actualizarTotales();
+      });
+    });
+
+    actualizarTotales();
+  }
+
+  function pintarPersonalizadas() {
+    const contenedor = qs('#operaciones-personalizadas');
+    if (datos.personalizadas.length === 0) {
+      contenedor.innerHTML = '';
+      return;
+    }
+
+    contenedor.innerHTML = `
+      <table class="tabla">
+        <thead><tr><th>Operación agregada</th><th class="num">Precio</th><th></th></tr></thead>
+        <tbody>
+          ${datos.personalizadas
+            .map(
+              (op, indice) => `
+            <tr>
+              <td class="negrita">${esc(op.nombre)}</td>
+              <td class="num">${esc(precioUnitario(op.precio))}</td>
+              <td class="acciones-fila">
+                <button type="button" class="boton icono peligro" data-quitar="${indice}" title="Quitar">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </td>
+            </tr>`
+            )
+            .join('')}
+        </tbody>
+      </table>`;
+
+    contenedor.querySelectorAll('[data-quitar]').forEach((boton) => {
+      boton.addEventListener('click', () => {
+        datos.personalizadas.splice(Number(boton.dataset.quitar), 1);
+        pintarPersonalizadas();
+        actualizarTotales();
+      });
+    });
+  }
+
+  // ------------------------------------------------------------- paquetes
+
+  function precioPrendaActual() {
+    let total = 0;
+    datos.seleccion.forEach((precio) => (total += Number(precio) || 0));
+    datos.personalizadas.forEach((op) => (total += Number(op.precio) || 0));
+    return total;
+  }
+
+  function pintarPaquetes() {
+    if (datos.paquetes.length === 0) {
+      cuerpoPaquetes.innerHTML = '<tr><td colspan="5" class="sin-datos">Aún no agregas paquetes.</td></tr>';
+      piePaquetes.classList.add('oculto');
+      actualizarTotales();
+      return;
+    }
+
+    const precio = precioPrendaActual();
+    cuerpoPaquetes.innerHTML = datos.paquetes
+      .map(
+        (q, indice) => `
+        <tr data-paquete="${indice}">
+          <td class="num"><input type="number" class="numero" min="1" step="1" value="${esc(q.numero)}" data-numero /></td>
+          <td><input type="text" class="talla" value="${esc(q.talla)}" data-talla /></td>
+          <td class="num"><input type="number" class="cantidad" min="1" step="1" value="${esc(q.cantidad)}" data-cantidad-paq /></td>
+          <td class="num">${esc(soles(precio * Number(q.cantidad || 0)))}</td>
+          <td class="acciones-fila">
+            <button type="button" class="boton icono peligro" data-quitar-paquete="${indice}" title="Quitar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </td>
+        </tr>`
+      )
+      .join('');
+
+    cuerpoPaquetes.querySelectorAll('tr[data-paquete]').forEach((fila) => {
+      const i = Number(fila.dataset.paquete);
+      fila.querySelector('[data-numero]').addEventListener('input', (e) => {
+        datos.paquetes[i].numero = Number(e.target.value) || 0;
+      });
+      fila.querySelector('[data-talla]').addEventListener('input', (e) => {
+        datos.paquetes[i].talla = e.target.value;
+      });
+      fila.querySelector('[data-cantidad-paq]').addEventListener('input', (e) => {
+        datos.paquetes[i].cantidad = Number(e.target.value) || 0;
+        fila.querySelectorAll('td')[3].textContent = soles(precio * datos.paquetes[i].cantidad);
+        actualizarTotales();
+      });
+    });
+
+    piePaquetes.classList.remove('oculto');
+    actualizarTotales();
+  }
+
+  function actualizarTotales() {
+    const precio = precioPrendaActual();
+    const prendas = datos.paquetes.reduce((s, q) => s + (Number(q.cantidad) || 0), 0);
+    qs('#total-prendas').textContent = numero(prendas);
+    qs('#total-partida').textContent = soles(precio * prendas);
+
+    const partes = [];
+    partes.push(`${datos.seleccion.size + datos.personalizadas.length} operaciones`);
+    partes.push(`${soles(precio)} por prenda`);
+    partes.push(`${datos.paquetes.length} paquetes · ${numero(prendas)} prendas`);
+    if (prendas > 0) partes.push(`Total ${soles(precio * prendas)}`);
+    pistaCrear.textContent = partes.join(' · ');
+
+    return precio;
+  }
+
+  function generarPaquetes() {
+    const cantidad = Number(qs('#gen-cantidad').value) || 0;
+    const desde = Number(qs('#gen-desde').value) || 1;
+    const talla = qs('#gen-talla').value.trim();
+    const prendas = Number(qs('#gen-prendas').value) || 0;
+
+    if (cantidad <= 0) return toast('Indica cuántos paquetes generar.', 'aviso');
+    if (!talla) return toast('Indica la talla de los paquetes.', 'aviso');
+    if (prendas <= 0) return toast('Indica las prendas por paquete.', 'aviso');
+
+    for (let i = 0; i < cantidad; i += 1) {
+      datos.paquetes.push({ numero: desde + i, talla, cantidad: prendas });
+    }
+
+    qs('#gen-desde').value = desde + cantidad;
+    pintarPaquetes();
+    toast(`${cantidad} paquete(s) agregados.`, 'exito');
+  }
+
+  // -------------------------------------------------------------- crear
+
+  async function crear() {
+    const codigo = qs('#codigo').value.trim();
+    const fechaValor = qs('#fecha').value;
+    const operaciones = [];
+
+    datos.seleccion.forEach((precio, id) => {
+      const op = datos.catalogo.find((o) => o.id === id);
+      if (op) operaciones.push({ nombre: op.nombre, precio: Number(precio) || 0, operacion_id: op.id });
+    });
+    datos.personalizadas.forEach((op) => operaciones.push({ nombre: op.nombre, precio: Number(op.precio) || 0, operacion_id: null }));
+
+    if (!codigo) return toast('Escribe el número de partida.', 'aviso');
+    if (operaciones.length === 0) return toast('Selecciona al menos una operación.', 'aviso');
+    if (datos.paquetes.length === 0) return toast('Agrega al menos un paquete.', 'aviso');
+    if (datos.paquetes.some((q) => !q.talla || Number(q.cantidad) <= 0)) {
+      return toast('Todos los paquetes deben tener talla y cantidad.', 'aviso');
+    }
+
+    const numeros = datos.paquetes.map((q) => Number(q.numero));
+    if (new Set(numeros).size !== numeros.length) return toast('Hay números de paquete repetidos.', 'aviso');
+
+    try {
+      cargando(botonCrear, true, 'Creando…');
+      await crearPartida({
+        codigo,
+        cliente: qs('#cliente').value.trim() || null,
+        descripcion: qs('#descripcion').value.trim() || null,
+        fecha: fechaValor || hoyISO(),
+        notas: qs('#notas-partida').value.trim() || null,
+        operaciones,
+        paquetes: datos.paquetes.map((q) => ({ numero: Number(q.numero), talla: q.talla, cantidad: Number(q.cantidad) })),
+      });
+
+      toast('Partida creada correctamente.', 'exito');
+      reiniciarFormulario();
+      panel.classList.add('oculto');
+      await cargarPartidas();
+    } catch (error) {
+      avisoError(error);
+    } finally {
+      cargando(botonCrear, false);
+    }
+  }
+
+  function reiniciarFormulario() {
+    qs('#codigo').value = '';
+    qs('#cliente').value = '';
+    qs('#descripcion').value = '';
+    qs('#notas-partida').value = '';
+    qs('#fecha').value = hoyISO();
+    datos.seleccion.clear();
+    datos.personalizadas = [];
+    datos.paquetes = [];
+    pintarCatalogo();
+    pintarPersonalizadas();
+    pintarPaquetes();
+  }
+
+  // --------------------------------------------------------------- init
+
+  async function agregarOperacionPersonalizada() {
+    const nombre = qs('#nueva-operacion').value.trim();
+    const precio = Number(qs('#nuevo-operacion-precio').value) || 0;
+    if (!nombre) return toast('Escribe el nombre de la operación.', 'aviso');
+
+    if (qs('#guardar-en-catalogo').checked) {
+      try {
+        const creada = await crearOperacionCatalogo({ nombre, precio_base: precio });
+        datos.catalogo.push(creada);
+        datos.catalogo.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        datos.seleccion.set(creada.id, precio);
+        pintarCatalogo();
+      } catch (error) {
+        avisoError(error);
+      }
+    } else {
+      datos.personalizadas.push({ nombre, precio });
+      pintarPersonalizadas();
+      actualizarTotales();
+    }
+
+    qs('#nueva-operacion').value = '';
+    qs('#nuevo-operacion-precio').value = '';
+  }
+
+  qs('#alternar-formulario').addEventListener('click', () => {
+    panel.classList.toggle('oculto');
+    if (!panel.classList.contains('oculto')) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  qs('#cerrar-formulario').addEventListener('click', () => panel.classList.add('oculto'));
+  qs('#marcar-todas').addEventListener('click', () => {
+    datos.catalogo.filter((o) => o.activa).forEach((o) => datos.seleccion.set(o.id, o.precio_base));
+    pintarCatalogo();
+  });
+  qs('#desmarcar-todas').addEventListener('click', () => {
+    datos.seleccion.clear();
+    pintarCatalogo();
+  });
+  qs('#agregar-operacion').addEventListener('click', agregarOperacionPersonalizada);
+  qs('#generar-paquetes').addEventListener('click', generarPaquetes);
+  qs('#buscar').addEventListener('input', pintarPartidas);
+  botonCrear.addEventListener('click', crear);
+
+  (async () => {
+    qs('#fecha').value = hoyISO();
+    try {
+      const [catalogo] = await Promise.all([listarCatalogo(), cargarPartidas()]);
+      datos.catalogo = catalogo;
+      pintarCatalogo();
+      pintarPaquetes();
+    } catch (error) {
+      avisoError(error);
+      cuerpoCatalogo.innerHTML = `<tr><td colspan="3" class="sin-datos">${esc(error.message)}</td></tr>`;
+    }
+  })();
+</script>
