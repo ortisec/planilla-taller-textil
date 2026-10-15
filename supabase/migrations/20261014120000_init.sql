@@ -48,6 +48,7 @@ create table if not exists public.operaciones (
 comment on table public.operaciones is 'Catálogo base de operaciones (nombre + precio por prenda).';
 comment on column public.operaciones.precio_base is 'Precio por prenda en soles.';
 
+drop trigger if exists trg_operaciones_updated_at on public.operaciones;
 create trigger trg_operaciones_updated_at
   before update on public.operaciones
   for each row execute function public.fn_set_updated_at();
@@ -70,6 +71,7 @@ comment on table public.trabajadores is 'Personal del taller que realiza las ope
 create unique index if not exists trabajadores_nombre_doc_idx
   on public.trabajadores (lower(nombre), coalesce(documento, ''));
 
+drop trigger if exists trg_trabajadores_updated_at on public.trabajadores;
 create trigger trg_trabajadores_updated_at
   before update on public.trabajadores
   for each row execute function public.fn_set_updated_at();
@@ -93,6 +95,7 @@ create table if not exists public.partidas (
 
 comment on table public.partidas is 'Número de partida: lote de prendas de un pedido.';
 
+drop trigger if exists trg_partidas_updated_at on public.partidas;
 create trigger trg_partidas_updated_at
   before update on public.partidas
   for each row execute function public.fn_set_updated_at();
@@ -118,6 +121,7 @@ comment on table public.partida_operaciones is
 create index if not exists partida_operaciones_partida_idx
   on public.partida_operaciones (partida_id);
 
+drop trigger if exists trg_partida_operaciones_updated_at on public.partida_operaciones;
 create trigger trg_partida_operaciones_updated_at
   before update on public.partida_operaciones
   for each row execute function public.fn_set_updated_at();
@@ -142,6 +146,7 @@ comment on table public.partida_paquetes is
 create index if not exists partida_paquetes_partida_idx
   on public.partida_paquetes (partida_id);
 
+drop trigger if exists trg_partida_paquetes_updated_at on public.partida_paquetes;
 create trigger trg_partida_paquetes_updated_at
   before update on public.partida_paquetes
   for each row execute function public.fn_set_updated_at();
@@ -196,6 +201,7 @@ create index if not exists registros_trabajo_trabajador_idx on public.registros_
 create index if not exists registros_trabajo_partida_idx on public.registros_trabajo (partida_id);
 create index if not exists registros_trabajo_paquete_idx on public.registros_trabajo (paquete_id);
 
+drop trigger if exists trg_registros_trabajo_updated_at on public.registros_trabajo;
 create trigger trg_registros_trabajo_updated_at
   before update on public.registros_trabajo
   for each row execute function public.fn_set_updated_at();

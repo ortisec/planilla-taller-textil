@@ -65,7 +65,7 @@ export function confirmar({
     fondo.innerHTML = `
       <div class="modal" role="dialog" aria-modal="true">
         <div class="modal-cabecera">${esc(titulo)}</div>
-        <div class="modal-cuerpo"><p>${esc(mensaje)}</p></div>
+        <div class="modal-cuerpo"><p style="white-space:pre-line">${esc(mensaje)}</p></div>
         <div class="modal-pie">
           <button type="button" class="boton secundario" data-cancelar>${esc(textoCancelar)}</button>
           <button type="button" class="boton ${peligro ? 'peligro' : ''}" data-aceptar>${esc(textoAceptar)}</button>
