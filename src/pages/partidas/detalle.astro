@@ -18,7 +18,7 @@ import Icon from '../../components/Icon.astro';
 
   <div id="cargando" class="tarjeta"><div class="tarjeta-cuerpo sin-datos">Cargando partida…</div></div>
 
-  <div id="contenido" class="oculto">
+  <div id="contenido" class="hidden">
     <div class="tarjeta">
       <div class="tarjeta-cuerpo">
         <div class="encabezado-partida">
@@ -64,7 +64,7 @@ import Icon from '../../components/Icon.astro';
           </div>
         </div>
 
-        <div id="partida-notas" class="alerta info mt-3 oculto"></div>
+        <div id="partida-notas" class="alerta info mt-3 hidden"></div>
       </div>
     </div>
 
@@ -132,7 +132,7 @@ import Icon from '../../components/Icon.astro';
             <tbody id="cuerpo-paquetes">
               <tr><td colspan="6" class="sin-datos">Cargando…</td></tr>
             </tbody>
-            <tfoot id="pie-paquetes" class="oculto">
+            <tfoot id="pie-paquetes" class="hidden">
               <tr>
                 <td colspan="2">Totales</td>
                 <td class="num" id="total-prendas">0</td>
@@ -197,7 +197,7 @@ import Icon from '../../components/Icon.astro';
             <tbody id="cuerpo-registros">
               <tr><td colspan="8" class="sin-datos">Cargando…</td></tr>
             </tbody>
-            <tfoot id="pie-registros" class="oculto">
+            <tfoot id="pie-registros" class="hidden">
               <tr>
                 <td colspan="5">Total registrado</td>
                 <td class="num" id="total-registros">S/ 0.00</td>
@@ -268,10 +268,10 @@ import Icon from '../../components/Icon.astro';
 
     const notas = qs('#partida-notas');
     if (p.notas) {
-      notas.classList.remove('oculto');
+      notas.classList.remove('hidden');
       notas.textContent = p.notas;
     } else {
-      notas.classList.add('oculto');
+      notas.classList.add('hidden');
     }
 
     qs('#ir-trabajo').href = `/trabajo?partida=${encodeURIComponent(p.id)}`;
@@ -355,7 +355,7 @@ import Icon from '../../components/Icon.astro';
 
     if (datos.paquetes.length === 0) {
       cuerpoPaquetes.innerHTML = '<tr><td colspan="6" class="sin-datos">Esta partida no tiene paquetes.</td></tr>';
-      qs('#pie-paquetes').classList.add('oculto');
+      qs('#pie-paquetes').classList.add('hidden');
       return;
     }
 
@@ -426,7 +426,7 @@ import Icon from '../../components/Icon.astro';
     qs('#total-prendas').textContent = numero(totalPrendas());
     qs('#total-partida').textContent = soles(precio * totalPrendas());
     qs('#total-registrado').textContent = soles(datos.partida.monto_registrado);
-    qs('#pie-paquetes').classList.remove('oculto');
+    qs('#pie-paquetes').classList.remove('hidden');
   }
 
   // -------------------------------------------------------------- registros
@@ -434,7 +434,7 @@ import Icon from '../../components/Icon.astro';
   function pintarRegistros() {
     if (datos.registros.length === 0) {
       cuerpoRegistros.innerHTML = '<tr><td colspan="8" class="sin-datos">Todavía no hay trabajo registrado en esta partida.</td></tr>';
-      qs('#pie-registros').classList.add('oculto');
+      qs('#pie-registros').classList.add('hidden');
       return;
     }
 
@@ -460,7 +460,7 @@ import Icon from '../../components/Icon.astro';
 
     const total = datos.registros.reduce((s, r) => s + Number(r.subtotal), 0);
     qs('#total-registros').textContent = soles(total);
-    qs('#pie-registros').classList.remove('oculto');
+    qs('#pie-registros').classList.remove('hidden');
 
     cuerpoRegistros.querySelectorAll('[data-borrar-registro]').forEach((boton) => {
       boton.addEventListener('click', async () => {
@@ -507,8 +507,8 @@ import Icon from '../../components/Icon.astro';
     pintarPaquetes();
     pintarRegistros();
 
-    qs('#cargando').classList.add('oculto');
-    qs('#contenido').classList.remove('oculto');
+    qs('#cargando').classList.add('hidden');
+    qs('#contenido').classList.remove('hidden');
   }
 
   // ----------------------------------------------------------------- init

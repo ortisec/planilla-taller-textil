@@ -10,7 +10,7 @@ import Icon from '../../components/Icon.astro';
     </button>
   </div>
 
-  <div class="tarjeta oculto" id="panel-nueva">
+  <div class="tarjeta hidden" id="panel-nueva">
     <div class="tarjeta-cabecera">
       <div>
         <h2>Nueva partida</h2>
@@ -132,7 +132,7 @@ import Icon from '../../components/Icon.astro';
               <tbody id="cuerpo-paquetes">
                 <tr><td colspan="5" class="sin-datos">Aún no agregas paquetes.</td></tr>
               </tbody>
-              <tfoot id="pie-paquetes" class="oculto">
+              <tfoot id="pie-paquetes" class="hidden">
                 <tr>
                   <td colspan="2">Totales</td>
                   <td class="num" id="total-prendas">0</td>
@@ -381,7 +381,7 @@ import Icon from '../../components/Icon.astro';
   function pintarPaquetes() {
     if (datos.paquetes.length === 0) {
       cuerpoPaquetes.innerHTML = '<tr><td colspan="5" class="sin-datos">Aún no agregas paquetes.</td></tr>';
-      piePaquetes.classList.add('oculto');
+      piePaquetes.classList.add('hidden');
       actualizarTotales();
       return;
     }
@@ -419,7 +419,7 @@ import Icon from '../../components/Icon.astro';
       });
     });
 
-    piePaquetes.classList.remove('oculto');
+    piePaquetes.classList.remove('hidden');
     actualizarTotales();
   }
 
@@ -495,7 +495,7 @@ import Icon from '../../components/Icon.astro';
 
       toast('Partida creada correctamente.', 'exito');
       reiniciarFormulario();
-      panel.classList.add('oculto');
+      panel.classList.add('hidden');
       await cargarPartidas();
     } catch (error) {
       avisoError(error);
@@ -546,10 +546,10 @@ import Icon from '../../components/Icon.astro';
   }
 
   qs('#alternar-formulario').addEventListener('click', () => {
-    panel.classList.toggle('oculto');
-    if (!panel.classList.contains('oculto')) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    panel.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden')) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
-  qs('#cerrar-formulario').addEventListener('click', () => panel.classList.add('oculto'));
+  qs('#cerrar-formulario').addEventListener('click', () => panel.classList.add('hidden'));
   qs('#marcar-todas').addEventListener('click', () => {
     datos.catalogo.filter((o) => o.activa).forEach((o) => datos.seleccion.set(o.id, o.precio_base));
     pintarCatalogo();

@@ -105,7 +105,7 @@ import Icon from '../components/Icon.astro';
           <tbody id="cuerpo">
             <tr><td colspan="10" class="sin-datos">Cargando…</td></tr>
           </tbody>
-          <tfoot id="pie" class="oculto">
+          <tfoot id="pie" class="hidden">
             <tr>
               <td colspan="5">Total del filtro</td>
               <td class="num" id="total-cantidad">0</td>
@@ -161,7 +161,7 @@ import Icon from '../components/Icon.astro';
 
     if (registros.length === 0) {
       cuerpo.innerHTML = '<tr><td colspan="10" class="sin-datos">No hay registros con esos filtros.</td></tr>';
-      pie.classList.add('oculto');
+      pie.classList.add('hidden');
     } else {
       cuerpo.innerHTML = registros
         .map(
@@ -187,7 +187,7 @@ import Icon from '../components/Icon.astro';
 
       qs('#total-cantidad').textContent = numero(resumen.prendas);
       qs('#total-importe').textContent = soles(resumen.importe);
-      pie.classList.remove('oculto');
+      pie.classList.remove('hidden');
     }
 
     qs('#kpi-lineas').textContent = numero(registros.length);

@@ -2,8 +2,13 @@
 
 /* ==========================================================================
    Planilla Taller Textil — tema y sistema de diseño (Tailwind CSS v4)
-   Las clases semánticas (`.tarjeta`, `.boton`, `.chip`, `.num`…) se definen
-   con @apply para reutilizarlas también en el HTML que generan los scripts.
+
+   Capas:
+     base       → estilos de elementos (body, títulos, inputs…)
+     components → clases semánticas reutilizables en HTML y en los scripts
+                  (.tarjeta, .boton, .chip, .num, .tabla…)
+     utilities  → utilidades de Tailwind usadas en el marcado (tienen
+                  prioridad sobre las clases de componente)
    ========================================================================== */
 
 @theme {
@@ -69,472 +74,837 @@
     @apply font-sans;
   }
 
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    @apply w-full rounded-lg border border-borde-fuerte bg-superficie px-3 py-2 text-[15px] text-texto transition;
+  }
+
+  input:not([type='checkbox']):not([type='radio']):focus,
+  select:focus,
+  textarea:focus {
+    @apply border-primario outline-none ring-4 ring-primario/15;
+  }
+
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    @apply cursor-not-allowed bg-superficie-2 text-suave;
+  }
+
+  textarea {
+    @apply min-h-[76px] resize-y;
+  }
+
   input[type='checkbox'],
   input[type='radio'] {
     @apply size-4 accent-primario;
   }
 }
 
-/* ---------------------------------------------------------------- Estructura */
+@layer components {
+  /* ------------------------------------------------------------- Estructura */
 
-.app {
-  @apply grid min-h-screen grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)];
-}
-
-.barra-lateral {
-  @apply flex flex-col gap-4 border-b border-borde bg-superficie px-4 py-4 lg:sticky lg:top-0 lg:h-screen lg:gap-6 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-3.5 lg:py-5;
-}
-
-.marca {
-  @apply flex items-center gap-3 rounded-lg px-2 py-1 text-texto;
-}
-
-.marca:hover {
-  @apply no-underline;
-}
-
-.marca-logo {
-  @apply grid size-9 shrink-0 place-items-center rounded-xl text-white;
-  background-image: linear-gradient(140deg, var(--color-primario), #7c6cf5);
-}
-
-.marca strong {
-  @apply block text-[15px] tracking-tight;
-}
-
-.marca span span {
-  @apply block text-xs text-suave;
-}
-
-.navegacion {
-  @apply flex flex-col gap-0.5;
-}
-
-.titulo-seccion {
-  @apply px-2.5 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-wider text-suave;
-}
-
-.enlace-nav {
-  @apply flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium text-suave transition-colors;
-}
-
-.enlace-nav:hover {
-  @apply bg-superficie-2 text-texto no-underline;
-}
-
-.enlace-nav.activo {
-  @apply bg-primario-suave text-primario-oscuro;
-}
-
-.pie-barra {
-  @apply mt-auto border-t border-borde px-2.5 pt-3 text-xs text-suave;
-}
-
-.principal {
-  @apply mx-auto w-full max-w-[1240px] px-4 pb-16 pt-5 sm:px-6 lg:px-8 lg:pb-20 lg:pt-7;
-}
-
-.encabezado {
-  @apply mb-5 flex flex-wrap items-start justify-between gap-4;
-}
-
-.encabezado h1 {
-  @apply text-xl tracking-tight sm:text-2xl;
-}
-
-.encabezado p {
-  @apply mt-1 text-sm text-suave;
-}
+  .app {
+    @apply grid min-h-screen grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)];
+  }
 
-.acciones-encabezado {
-  @apply flex flex-wrap items-center gap-2;
-}
-
-/* -------------------------------------------------------------------- Tarjetas */
+  .barra-lateral {
+    @apply flex flex-col gap-4 border-b border-borde bg-superficie px-4 py-4 lg:sticky lg:top-0 lg:h-screen lg:gap-6 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-3.5 lg:py-5;
+  }
 
-.tarjeta {
-  @apply rounded-xl border border-borde bg-superficie shadow-tarjeta;
-}
+  .marca {
+    @apply flex items-center gap-3 rounded-lg px-2 py-1 text-texto;
+  }
 
-.tarjeta + .tarjeta {
-  @apply mt-4;
-}
+  .marca:hover {
+    @apply no-underline;
+  }
 
-.tarjeta-cabecera {
-  @apply flex flex-wrap items-center justify-between gap-3 border-b border-borde px-4 py-4 sm:px-5;
-}
+  .marca-logo {
+    @apply grid size-9 shrink-0 place-items-center rounded-xl text-white;
+    background-image: linear-gradient(140deg, var(--color-primario), #7c6cf5);
+  }
 
-.tarjeta-cabecera h2 {
-  @apply text-base;
-}
+  .marca strong {
+    @apply block text-[15px] tracking-tight;
+  }
 
-.tarjeta-cabecera p {
-  @apply mt-0.5 text-[13px] text-suave;
-}
+  .marca span span {
+    @apply block text-xs text-suave;
+  }
 
-.tarjeta-cuerpo {
-  @apply p-4 sm:p-5;
-}
+  .navegacion {
+    @apply flex flex-col gap-0.5;
+  }
 
-.tarjeta-cuerpo.sin-padding {
-  @apply p-0;
-}
+  .titulo-seccion {
+    @apply px-2.5 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-wider text-suave;
+  }
 
-.rejilla {
-  @apply grid gap-4;
-}
+  .enlace-nav {
+    @apply flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium text-suave transition-colors;
+  }
+
+  .enlace-nav:hover {
+    @apply bg-superficie-2 text-texto no-underline;
+  }
 
-.rejilla.kpi {
-  @apply grid-cols-[repeat(auto-fit,minmax(210px,1fr))];
-}
+  .enlace-nav.activo {
+    @apply bg-primario-suave text-primario-oscuro;
+  }
 
-.rejilla.dos {
-  @apply grid-cols-[repeat(auto-fit,minmax(320px,1fr))];
-}
+  .pie-barra {
+    @apply mt-auto border-t border-borde px-2.5 pt-3 text-xs text-suave;
+  }
 
-.kpi {
-  @apply rounded-xl border border-borde bg-superficie px-4 py-4 shadow-tarjeta sm:px-5;
-}
+  .principal {
+    @apply mx-auto w-full max-w-[1240px] px-4 pb-16 pt-5 sm:px-6 lg:px-8 lg:pb-20 lg:pt-7;
+  }
 
-.kpi-etiqueta {
-  @apply flex items-center gap-2 text-[13px] font-medium text-suave;
-}
+  .encabezado {
+    @apply mb-5 flex flex-wrap items-start justify-between gap-4;
+  }
 
-.kpi-valor {
-  @apply mt-2 text-2xl font-bold tracking-tight;
-}
+  .encabezado h1 {
+    @apply text-xl tracking-tight sm:text-2xl;
+  }
 
-.kpi-pie {
-  @apply mt-1 text-[12.5px] text-suave;
-}
+  .encabezado p {
+    @apply mt-1 text-sm text-suave;
+  }
 
-.kpi.resaltado {
-  @apply border-transparent text-white;
-  background-image: linear-gradient(150deg, var(--color-primario), #6d5ef0);
-}
+  .acciones-encabezado {
+    @apply flex flex-wrap items-center gap-2;
+  }
 
-.kpi.resaltado .kpi-etiqueta,
-.kpi.resaltado .kpi-pie {
-  @apply text-white/80;
-}
+  /* --------------------------------------------------------------- Tarjetas */
 
-/* --------------------------------------------------------------- Formularios */
+  .tarjeta {
+    @apply rounded-xl border border-borde bg-superficie shadow-tarjeta;
+  }
 
-.campo {
-  @apply flex flex-col gap-1.5;
-}
+  .tarjeta + .tarjeta {
+    @apply mt-4;
+  }
 
-.etiqueta,
-.campo > label {
-  @apply text-[13px] font-semibold text-[#414a5c];
-}
+  .tarjeta-cabecera {
+    @apply flex flex-wrap items-center justify-between gap-3 border-b border-borde px-4 py-4 sm:px-5;
+  }
 
-input:not([type='checkbox']):not([type='radio']),
-select,
-textarea {
-  @apply w-full rounded-lg border border-borde-fuerte bg-superficie px-3 py-2 text-[15px] text-texto transition;
-}
+  .tarjeta-cabecera h2 {
+    @apply text-base;
+  }
 
-input:not([type='checkbox']):not([type='radio']):focus,
-select:focus,
-textarea:focus {
-  @apply border-primario outline-none ring-4 ring-primario/15;
-}
+  .tarjeta-cabecera p {
+    @apply mt-0.5 text-[13px] text-suave;
+  }
 
-input:disabled,
-select:disabled,
-textarea:disabled {
-  @apply cursor-not-allowed bg-superficie-2 text-suave;
-}
+  .tarjeta-cuerpo {
+    @apply p-4 sm:p-5;
+  }
 
-textarea {
-  @apply min-h-[76px] resize-y;
-}
+  .tarjeta-cuerpo.sin-padding {
+    @apply p-0;
+  }
 
-.formulario-rejilla {
-  @apply grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] items-end gap-3.5;
-}
+  .rejilla {
+    @apply grid gap-4;
+  }
 
-.pista {
-  @apply text-[12.5px] text-suave;
-}
+  .rejilla.kpi {
+    @apply grid-cols-[repeat(auto-fit,minmax(210px,1fr))];
+  }
 
-.casilla {
-  @apply flex items-center gap-2 text-sm;
-}
+  .rejilla.dos {
+    @apply grid-cols-[repeat(auto-fit,minmax(320px,1fr))];
+  }
 
-/* -------------------------------------------------------------------- Botones */
+  .kpi {
+    @apply rounded-xl border border-borde bg-superficie px-4 py-4 shadow-tarjeta sm:px-5;
+  }
 
-.boton {
-  @apply inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-transparent bg-primario px-3.5 py-2 text-sm font-semibold text-white transition-colors;
-}
+  .kpi-etiqueta {
+    @apply flex items-center gap-2 text-[13px] font-medium text-suave;
+  }
 
-.boton:hover {
-  @apply bg-primario-oscuro;
-}
+  .kpi-valor {
+    @apply mt-2 text-2xl font-bold tracking-tight;
+  }
 
-.boton:disabled {
-  @apply cursor-not-allowed opacity-50;
-}
+  .kpi-pie {
+    @apply mt-1 text-[12.5px] text-suave;
+  }
 
-.boton.secundario {
-  @apply border-borde-fuerte bg-superficie text-texto hover:bg-superficie-2;
-}
+  .kpi.resaltado {
+    @apply border-transparent text-white;
+    background-image: linear-gradient(150deg, var(--color-primario), #6d5ef0);
+  }
 
-.boton.sutil {
-  @apply bg-transparent text-suave hover:bg-superficie-2 hover:text-texto;
-}
+  .kpi.resaltado .kpi-etiqueta,
+  .kpi.resaltado .kpi-pie {
+    @apply text-white/80;
+  }
 
-.boton.peligro {
-  @apply bg-peligro hover:bg-[#a53125];
-}
+  /* ------------------------------------------------------------ Formularios */
 
-.boton.pequeno {
-  @apply px-2.5 py-1.5 text-[13px];
-}
+  .campo {
+    @apply flex flex-col gap-1.5;
+  }
 
-.boton.icono {
-  @apply border-transparent bg-transparent p-1.5 text-suave hover:bg-superficie-2 hover:text-texto;
-}
+  .etiqueta,
+  .campo > label {
+    @apply text-[13px] font-semibold text-[#414a5c];
+  }
+
+  .formulario-rejilla {
+    @apply grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] items-end gap-3.5;
+  }
 
-.boton.icono.peligro:hover {
-  @apply bg-peligro-suave text-peligro;
-}
+  .pista {
+    @apply text-[12.5px] text-suave;
+  }
 
-/* --------------------------------------------------------------------- Tablas */
+  .casilla {
+    @apply flex items-center gap-2 text-sm;
+  }
 
-.tabla-envoltura {
-  @apply w-full overflow-x-auto;
-}
+  /* --------------------------------------------------------------- Botones */
 
-table.tabla {
-  @apply w-full border-collapse text-sm;
-}
+  .boton {
+    @apply inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-transparent bg-primario px-3.5 py-2 text-sm font-semibold text-white transition-colors;
+  }
 
-table.tabla th {
-  @apply whitespace-nowrap border-b border-borde bg-superficie-2 px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-suave;
-}
+  .boton:hover {
+    @apply bg-primario-oscuro;
+  }
 
-table.tabla td {
-  @apply border-b border-borde px-3.5 py-2.5 align-middle;
-}
+  .boton:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
 
-table.tabla tbody tr:last-child td {
-  @apply border-b-0;
-}
+  .boton.secundario {
+    @apply border-borde-fuerte bg-superficie text-texto hover:bg-superficie-2;
+  }
 
-table.tabla tbody tr:hover {
-  @apply bg-[#fafbff];
-}
+  .boton.sutil {
+    @apply bg-transparent text-suave hover:bg-superficie-2 hover:text-texto;
+  }
 
-table.tabla tfoot td {
-  @apply border-t border-borde bg-superficie-2 px-3.5 py-3 font-bold;
-}
+  .boton.peligro {
+    @apply bg-peligro hover:bg-[#a53125];
+  }
 
-/* Los valores numéricos se muestran centrados (también los inputs). */
-.num {
-  @apply text-center tabular-nums;
-}
+  .boton.pequeno {
+    @apply px-2.5 py-1.5 text-[13px];
+  }
 
-table.tabla input,
-table.tabla select {
-  @apply px-2 py-1.5 text-[13.5px];
-}
+  .boton.grande {
+    @apply px-6 py-3 text-[15px];
+  }
 
-table.tabla input.cantidad,
-table.tabla input.precio,
-table.tabla input.numero,
-table.tabla input.talla {
-  @apply text-center;
-}
+  .boton.icono {
+    @apply border-transparent bg-transparent p-1.5 text-suave hover:bg-superficie-2 hover:text-texto;
+  }
 
-table.tabla input.cantidad {
-  @apply w-[92px];
-}
+  .boton.icono.peligro:hover {
+    @apply bg-peligro-suave text-peligro;
+  }
 
-table.tabla input.precio {
-  @apply w-[112px];
-}
+  /* ---------------------------------------------------------------- Tablas */
 
-table.tabla input.numero {
-  @apply w-[74px];
-}
+  .tabla-envoltura {
+    @apply w-full overflow-x-auto;
+  }
 
-table.tabla input.talla {
-  @apply w-[84px];
-}
+  table.tabla {
+    @apply w-full border-collapse text-sm;
+  }
 
-.chip {
-  @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-borde bg-superficie-2 px-2.5 py-0.5 text-xs font-semibold text-suave;
-}
+  table.tabla th {
+    @apply whitespace-nowrap border-b border-borde bg-superficie-2 px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-suave;
+  }
 
-.chip.exito {
-  @apply border-[#bde7d8] bg-exito-suave text-exito;
-}
+  table.tabla td {
+    @apply border-b border-borde px-3.5 py-2.5 align-middle;
+  }
 
-.chip.aviso {
-  @apply border-[#f3dcb8] bg-alerta-suave text-alerta;
-}
+  table.tabla tbody tr:last-child td {
+    @apply border-b-0;
+  }
 
-.chip.peligro {
-  @apply border-[#f6cdc9] bg-peligro-suave text-peligro;
-}
+  table.tabla tbody tr:hover {
+    @apply bg-[#fafbff];
+  }
 
-.chip.info {
-  @apply border-[#c3e0f0] bg-info-suave text-info;
-}
+  table.tabla tfoot td {
+    @apply border-t border-borde bg-superficie-2 px-3.5 py-3 font-bold;
+  }
 
-.chip.primario {
-  @apply border-[#d5d8ff] bg-primario-suave text-primario-oscuro;
-}
+  /* Los valores numéricos se muestran centrados. */
+  .num {
+    @apply text-center tabular-nums;
+  }
 
-/* --------------------------------------------------------------- Utilitarios */
+  table.tabla input,
+  table.tabla select {
+    @apply px-2 py-1.5 text-[13.5px];
+  }
 
-.fila {
-  @apply flex flex-wrap items-center gap-2.5;
-}
+  table.tabla input.cantidad,
+  table.tabla input.precio,
+  table.tabla input.numero,
+  table.tabla input.talla {
+    @apply text-center;
+  }
 
-.separado {
-  @apply justify-between;
-}
+  /* ---------------------------------------------------------------- Chips */
 
-.sin-datos {
-  @apply px-4 py-9 text-center text-sm text-suave;
-}
+  .chip {
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-borde bg-superficie-2 px-2.5 py-0.5 text-xs font-semibold text-suave;
+  }
 
-.texto-suave {
-  @apply text-suave;
-}
+  .chip.exito {
+    @apply border-[#bde7d8] bg-exito-suave text-exito;
+  }
 
-.texto-pequeno {
-  @apply text-[12.5px];
-}
+  .chip.aviso {
+    @apply border-[#f3dcb8] bg-alerta-suave text-alerta;
+  }
 
-.negrita {
-  @apply font-semibold;
-}
+  .chip.peligro {
+    @apply border-[#f6cdc9] bg-peligro-suave text-peligro;
+  }
 
-.mono {
-  @apply font-mono text-[13px];
-}
+  .chip.info {
+    @apply border-[#c3e0f0] bg-info-suave text-info;
+  }
 
-.oculto {
-  @apply hidden;
-}
+  .chip.primario {
+    @apply border-[#d5d8ff] bg-primario-suave text-primario-oscuro;
+  }
 
-.acciones-fila {
-  @apply flex justify-end gap-1;
-}
+  /* ---------------------------------------------------------- Utilitarios */
 
-/* ------------------------------------------------------------------- Alertas */
+  .fila {
+    @apply flex flex-wrap items-center gap-2.5;
+  }
 
-.alerta {
-  @apply flex items-start gap-3 rounded-lg border border-borde bg-superficie-2 px-4 py-3 text-[13.5px];
-}
+  .separado {
+    @apply justify-between;
+  }
 
-.alerta.info {
-  @apply border-[#c3e0f0] bg-info-suave text-[#0b4f79];
-}
+  .sin-datos {
+    @apply px-4 py-9 text-center text-sm text-suave;
+  }
 
-.alerta.exito {
-  @apply border-[#bde7d8] bg-exito-suave text-[#0d6146];
-}
+  .texto-suave {
+    @apply text-suave;
+  }
 
-.alerta.alerta-aviso {
-  @apply border-[#f3dcb8] bg-alerta-suave text-[#7c3d06];
-}
+  .texto-pequeno {
+    @apply text-[12.5px];
+  }
 
-.alerta.peligro {
-  @apply border-[#f6cdc9] bg-peligro-suave text-[#8c2a20];
-}
+  .negrita {
+    @apply font-semibold;
+  }
 
-/* --------------------------------------------------------------------- Modal */
+  .mono {
+    @apply font-mono text-[13px];
+  }
 
-.modal-fondo {
-  @apply fixed inset-0 z-50 grid place-items-center bg-[rgba(17,24,39,0.45)] p-5;
-}
+  .acciones-fila {
+    @apply flex justify-end gap-1;
+  }
 
-.modal {
-  @apply max-h-[90vh] w-[min(560px,100%)] overflow-auto rounded-xl bg-superficie shadow-modal;
-}
+  /* -------------------------------------------------------------- Alertas */
 
-.modal-cabecera {
-  @apply border-b border-borde px-5 py-4 font-semibold;
-}
+  .alerta {
+    @apply flex items-start gap-3 rounded-lg border border-borde bg-superficie-2 px-4 py-3 text-[13.5px];
+  }
 
-.modal-cuerpo {
-  @apply p-5;
-}
+  .alerta.info {
+    @apply border-[#c3e0f0] bg-info-suave text-[#0b4f79];
+  }
 
-.modal-pie {
-  @apply flex justify-end gap-2 border-t border-borde px-5 py-4;
-}
+  .alerta.exito {
+    @apply border-[#bde7d8] bg-exito-suave text-[#0d6146];
+  }
 
-/* -------------------------------------------------------------------- Toasts */
+  .alerta.alerta-aviso {
+    @apply border-[#f3dcb8] bg-alerta-suave text-[#7c3d06];
+  }
 
-.toasts {
-  @apply fixed bottom-4 right-4 z-[80] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2.5;
-}
+  .alerta.peligro {
+    @apply border-[#f6cdc9] bg-peligro-suave text-[#8c2a20];
+  }
 
-.toast {
-  @apply rounded-lg bg-texto px-4 py-3 text-[13.5px] text-white shadow-flotante;
-}
+  /* ---------------------------------------------------------------- Modal */
 
-.toast.exito {
-  @apply bg-[#0f6b4f];
-}
+  .modal-fondo {
+    @apply fixed inset-0 z-50 grid place-items-center bg-[rgba(17,24,39,0.45)] p-5;
+  }
 
-.toast.error {
-  @apply bg-[#a53125];
-}
+  .modal {
+    @apply max-h-[90vh] w-[min(560px,100%)] overflow-auto rounded-xl bg-superficie shadow-modal;
+  }
 
-.toast.aviso {
-  @apply bg-[#93540c];
-}
+  .modal-cabecera {
+    @apply border-b border-borde px-5 py-4 font-semibold;
+  }
 
-/* --------------------------------------------------- Bloques y detalle partida */
+  .modal-cuerpo {
+    @apply p-5;
+  }
 
-.encabezado-partida {
-  @apply flex flex-wrap items-center justify-between gap-5;
-}
+  .modal-pie {
+    @apply flex justify-end gap-2 border-t border-borde px-5 py-4;
+  }
 
-.dato-partida {
-  @apply flex flex-col gap-0.5;
-}
+  /* --------------------------------------------------------------- Toasts */
 
-.etiqueta-dato {
-  @apply text-[11.5px] font-semibold uppercase tracking-wider text-suave;
-}
+  .toasts {
+    @apply fixed bottom-4 right-4 z-[80] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2.5;
+  }
 
-.valor-dato {
-  @apply text-[15px] font-semibold;
-}
+  .toast {
+    @apply rounded-lg bg-texto px-4 py-3 text-[13.5px] text-white shadow-flotante;
+  }
 
-.pasos-lista {
-  @apply flex flex-col gap-4;
-}
+  .toast.exito {
+    @apply bg-[#0f6b4f];
+  }
 
-.bloque {
-  @apply overflow-hidden rounded-lg border border-borde;
-}
+  .toast.error {
+    @apply bg-[#a53125];
+  }
 
-.bloque-cabecera {
-  @apply flex flex-wrap items-center justify-between gap-2.5 border-b border-borde bg-superficie-2 px-3.5 py-2.5 text-sm font-semibold;
-}
+  .toast.aviso {
+    @apply bg-[#93540c];
+  }
 
-.bloque-cuerpo {
-  @apply p-3.5;
-}
+  /* ------------------------------------------- Bloques y detalle de partida */
 
-.barra-avance {
-  @apply h-1.5 w-full overflow-hidden rounded-full bg-borde;
-}
+  .encabezado-partida {
+    @apply flex flex-wrap items-center justify-between gap-5;
+  }
 
-.barra-avance > span {
-  @apply block h-full rounded-full bg-primario;
-}
+  .dato-partida {
+    @apply flex flex-col gap-0.5;
+  }
 
-/* ----------------------------------------------------------------- Responsive */
+  .etiqueta-dato {
+    @apply text-[11.5px] font-semibold uppercase tracking-wider text-suave;
+  }
+
+  .valor-dato {
+    @apply text-[15px] font-semibold;
+  }
+
+  .pasos-lista {
+    @apply flex flex-col gap-4;
+  }
+
+  .bloque {
+    @apply overflow-hidden rounded-lg border border-borde;
+  }
+
+  .bloque-cabecera {
+    @apply flex flex-wrap items-center justify-between gap-2.5 border-b border-borde bg-superficie-2 px-3.5 py-2.5 text-sm font-semibold;
+  }
+
+  .bloque-cuerpo {
+    @apply p-3.5;
+  }
+
+  .barra-avance {
+    @apply h-1.5 w-full overflow-hidden rounded-full bg-borde;
+  }
+
+  .barra-avance > span {
+    @apply block h-full rounded-full bg-primario;
+  }
+
+  /* --------------------------------------- Registro diario: filas y resumen */
+
+  .fila-operacion {
+    @apply flex items-center gap-3 border-b border-borde py-3 last:border-b-0;
+  }
+
+  .fila-operacion .op-info {
+    @apply min-w-0 flex-1;
+  }
+
+  .fila-operacion .op-nombre {
+    @apply flex flex-wrap items-center gap-2 font-semibold;
+  }
+
+  .fila-operacion input.cantidad {
+    @apply w-[96px] shrink-0 py-2.5 text-center text-base;
+  }
+
+  .fila-operacion .op-importe {
+    @apply w-[104px] shrink-0 text-right text-[15px] font-semibold tabular-nums;
+  }
+
+  .resumen-pago {
+    @apply mt-4 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-borde bg-superficie-2 px-4 py-3.5;
+  }
+
+  .resumen-etiqueta {
+    @apply text-[11.5px] font-semibold uppercase tracking-wider text-suave;
+  }
+
+  .resumen-monto {
+    @apply text-2xl font-bold tracking-tight;
+  }
+
+  /* ---------------------------------------------------- Histograma semanal */
+
+  .histograma-scroll {
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .histograma {
+    display: flex;
+    align-items: flex-start;
+    min-width: 470px;
+  }
+
+  .histograma-eje {
+    position: relative;
+    height: 190px;
+    width: 78px;
+    flex: 0 0 auto;
+    margin-top: 14px;
+  }
+
+  .histograma-eje > span {
+    position: absolute;
+    left: 0;
+    right: 10px;
+    text-align: right;
+    font-size: 11px;
+    line-height: 1;
+    color: #667085;
+  }
+
+  .histograma-plot {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-top: 14px;
+  }
+
+  .histograma-rejilla {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 14px;
+    height: 190px;
+    pointer-events: none;
+  }
+
+  .histograma-rejilla > span {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px dashed #e4e7ee;
+  }
+
+  .histograma-rejilla > span:last-child {
+    border-top: 1px solid #cfd4e2;
+  }
+
+  .histograma-columnas {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .histograma-columna {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 66px;
+    flex-direction: column;
+  }
+
+  .histograma-total {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    line-height: 1;
+    color: #667085;
+    white-space: nowrap;
+  }
+
+  .histograma-barras {
+    position: relative;
+    display: flex;
+    height: 190px;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 5px;
+  }
+
+  .histograma-barra {
+    width: 22px;
+    min-height: 2px;
+    border-radius: 3px 3px 0 0;
+  }
+
+  .histograma-barra.pagado {
+    background-color: #12805c;
+  }
+
+  .histograma-barra.pendiente {
+    background-color: #e0a33a;
+  }
+
+  .histograma-etiqueta {
+    padding-top: 6px;
+    text-align: center;
+    font-size: 11px;
+    color: #667085;
+    white-space: nowrap;
+  }
+
+  .histograma-leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  /* ------------------------------------ Planilla del trabajador (documento) */
+
+  .modal.ancho {
+    width: min(920px, 100%);
+  }
+
+  .planilla-cuerpo {
+    padding: 16px;
+    background-color: #eef0f5;
+  }
+
+  /* Los colores van en hexadecimal a propósito: así la captura a imagen y PDF
+     (html2canvas) los interpreta siempre igual. */
+  .planilla-doc {
+    position: relative;
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 28px 26px;
+    background-color: #ffffff;
+    color: #1b2130;
+    font-size: 13px;
+    line-height: 1.45;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.14);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .planilla-doc .doc-cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid #1b2130;
+  }
+
+  .planilla-doc .doc-marca {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .planilla-doc .doc-logo {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background-color: #4f46e5;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .planilla-doc .doc-titulo {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .planilla-doc .doc-subtitulo {
+    font-size: 12px;
+    color: #667085;
+  }
+
+  .planilla-doc .doc-emitido {
+    text-align: right;
+    font-size: 11.5px;
+    color: #667085;
+    line-height: 1.5;
+  }
+
+  .planilla-doc .doc-emitido strong {
+    color: #1b2130;
+  }
+
+  .planilla-doc .doc-datos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 30px;
+    margin: 16px 0 4px;
+  }
+
+  .planilla-doc .doc-dato span {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #667085;
+  }
+
+  .planilla-doc .doc-dato strong {
+    font-size: 14px;
+  }
+
+  .planilla-doc .doc-dia {
+    margin-top: 16px;
+    border: 1px solid #e4e7ee;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .planilla-doc .doc-dia-cabecera {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 10px;
+    background-color: #f7f8fc;
+    border-bottom: 1px solid #e4e7ee;
+    font-weight: 600;
+  }
+
+  .planilla-doc table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .planilla-doc th {
+    padding: 6px 10px;
+    border-bottom: 1px solid #e4e7ee;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    text-align: left;
+    color: #667085;
+  }
+
+  .planilla-doc td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #eef0f5;
+  }
+
+  .planilla-doc tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .planilla-doc tfoot td {
+    padding: 7px 10px;
+    background-color: #f7f8fc;
+    border-top: 1px solid #e4e7ee;
+    font-weight: 700;
+  }
+
+  .planilla-doc .c {
+    text-align: center;
+  }
+
+  .planilla-doc .r {
+    text-align: right;
+  }
+
+  .planilla-doc .doc-totales {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 18px;
+    padding: 14px 16px;
+    border: 1px solid #e4e7ee;
+    border-radius: 8px;
+    background-color: #f7f8fc;
+  }
+
+  .planilla-doc .doc-total-etiqueta {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #667085;
+  }
+
+  .planilla-doc .doc-total-detalle {
+    font-size: 12px;
+    color: #667085;
+  }
+
+  .planilla-doc .doc-monto {
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  .planilla-doc .doc-notas {
+    margin-top: 14px;
+  }
+
+  .planilla-doc .doc-notas span {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #667085;
+  }
+
+  .planilla-doc .doc-vacio {
+    margin-top: 18px;
+    text-align: center;
+    color: #667085;
+  }
+
+  .planilla-doc .doc-firmas {
+    display: flex;
+    gap: 40px;
+    margin-top: 52px;
+  }
+
+  .planilla-doc .doc-firma {
+    flex: 1;
+    padding-top: 6px;
+    border-top: 1px solid #1b2130;
+    text-align: center;
+    font-size: 11.5px;
+    color: #667085;
+  }
+
+  .planilla-doc .doc-pie {
+    margin-top: 18px;
+    text-align: center;
+    font-size: 11px;
+    color: #667085;
+  }
+}
+
+/* --------------------------------------------------------------- Responsive */
 
 @media (max-width: 1023px) {
   .navegacion {
@@ -567,9 +937,44 @@ table.tabla input.talla {
   .kpi-valor {
     @apply text-xl;
   }
+
+  .fila-operacion {
+    @apply flex-wrap;
+  }
+
+  .fila-operacion .op-info {
+    @apply w-full flex-none;
+  }
 }
 
-/* ------------------------------------------------------------------ Impresión */
+/* ---------------------------------------------------------------- Impresión */
+
+/* Zona oculta donde se copia el documento solo cuando se va a imprimir. */
+.zona-impresion {
+  display: none;
+}
+
+@page {
+  margin: 12mm;
+}
+
+@media print {
+  /* Se imprime únicamente la zona con el documento. */
+  body.imprimiendo-planilla > *:not(.zona-impresion) {
+    display: none !important;
+  }
+
+  body.imprimiendo-planilla .zona-impresion {
+    display: block !important;
+  }
+
+  body.imprimiendo-planilla .planilla-doc {
+    width: auto;
+    max-width: none;
+    padding: 0;
+    box-shadow: none;
+  }
+}
 
 @media print {
   body {

@@ -5,11 +5,11 @@ import Icon from '../components/Icon.astro';
 
 <Layout titulo="Tablero" subtitulo="Resumen de producción y pagos del taller.">
   <div slot="acciones">
-    <a class="boton secundario" href="/partidas">
-      <Icon name="caja" size={16} /> Nueva partida
+    <a class="boton secundario" href="/horas">
+      <Icon name="reloj" size={16} /> Anotar horas
     </a>
     <a class="boton" href="/trabajo">
-      <Icon name="documento" size={16} /> Registrar trabajo
+      <Icon name="documento" size={16} /> Anotar prendas
     </a>
   </div>
 
@@ -17,7 +17,21 @@ import Icon from '../components/Icon.astro';
     <div class="kpi"><div class="kpi-etiqueta">Cargando…</div><div class="kpi-valor">—</div></div>
   </div>
 
-  <div id="error" class="oculto"></div>
+  <div id="error" class="hidden"></div>
+
+  <div class="tarjeta">
+    <div class="tarjeta-cabecera">
+      <div>
+        <h2>Pagos por semana</h2>
+        <p>Cada barra es una semana del taller: de <strong>sábado a viernes</strong>, y se paga el sábado siguiente.</p>
+      </div>
+      <a class="boton sutil pequeno" href="/pagos">Ver planilla</a>
+    </div>
+    <div class="tarjeta-cuerpo">
+      <div id="semana-actual" class="alerta info mb-2"></div>
+      <div class="grafico" id="grafico"></div>
+    </div>
+  </div>
 
   <div class="tarjeta">
     <div class="tarjeta-cabecera">
@@ -25,7 +39,7 @@ import Icon from '../components/Icon.astro';
         <h2>Partidas</h2>
         <p>Últimas partidas registradas con su avance de mano de obra.</p>
       </div>
-      <a class="boton sutil pequeno" href="/partidas">Ver todas <Icon name="volver" size={14} /></a>
+      <a class="boton sutil pequeno" href="/partidas">Ver todas</a>
     </div>
     <div class="tarjeta-cuerpo sin-padding">
       <div class="tabla-envoltura">
@@ -58,7 +72,7 @@ import Icon from '../components/Icon.astro';
           <h2>Pendiente por pagar</h2>
           <p>Mano de obra registrada que aún no se liquida.</p>
         </div>
-        <a class="boton sutil pequeno" href="/pagos">Ir a pagos</a>
+        <a class="boton sutil pequeno" href="/pagos">Ver planilla</a>
       </div>
       <div class="tarjeta-cuerpo sin-padding">
         <div class="tabla-envoltura">
@@ -93,7 +107,7 @@ import Icon from '../components/Icon.astro';
               <tr>
                 <th>Fecha</th>
                 <th>Trabajador</th>
-                <th>Operación</th>
+                <th>Trabajo</th>
                 <th class="num">Importe</th>
               </tr>
             </thead>
@@ -108,8 +122,22 @@ import Icon from '../components/Icon.astro';
 </Layout>
 
 <script>
-  import { resumenTablero, listarRegistros } from '../lib/api.js';
-  import { soles, numero, fecha, claseEstadoPartida, estadoPartida } from '../lib/format.js';
+  import { resumenTablero, listarRegistros, listarHoras } from '../lib/api.js';
+  import {
+    soles,
+    numero,
+    fecha,
+    hora12,
+    horasTexto,
+    inicioSemana,
+    finSemana,
+    diaDePago,
+    etiquetaSemanaCorta,
+    sumarDias,
+    hoyISO,
+    claseEstadoPartida,
+    estadoPartida,
+  } from '../lib/format.js';
   import { qs, esc, avisoError } from '../lib/ui.js';
 
   const kpis = qs('#kpis');
@@ -117,6 +145,8 @@ import Icon from '../components/Icon.astro';
   const cuerpoPendientes = qs('#cuerpo-pendientes');
   const cuerpoRegistros = qs('#cuerpo-registros');
   const cajaError = qs('#error');
+  const grafico = qs('#grafico');
+  const semanaActualCaja = qs('#semana-actual');
 
   function tarjetaKpi({ etiqueta, valor, pie, resaltado = false }) {
     return `
@@ -126,6 +156,107 @@ import Icon from '../components/Icon.astro';
         ${pie ? `<div class="kpi-pie">${esc(pie)}</div>` : ''}
       </div>`;
   }
+
+  // ------------------------------------------------------------ gráfico
+
+  /** Redondea hacia arriba a un número "bonito" para la escala del eje. */
+  function redondearArriba(valor) {
+    if (!(valor > 0)) return 1;
+    const magnitud = 10 ** Math.floor(Math.log10(valor));
+    const factores = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+    const factor = factores.find((f) => valor / magnitud <= f + 1e-9) ?? 10;
+    return factor * magnitud;
+  }
+
+  function pintarGrafico(semanas) {
+    const semanaActual = inicioSemana(hoyISO());
+
+    // Últimas 6 semanas, de la más antigua a la más reciente.
+    const datos = [];
+    for (let i = 5; i >= 0; i -= 1) {
+      const inicio = sumarDias(semanaActual, -7 * i);
+      const fila = semanas.find((s) => s.semana === inicio);
+      datos.push({
+        semana: inicio,
+        total: Number(fila?.total ?? 0),
+        pagado: Number(fila?.pagado ?? 0),
+        pendiente: Number(fila?.pendiente ?? 0),
+      });
+    }
+
+    const mayor = Math.max(...datos.flatMap((d) => [d.pagado, d.pendiente]), 0);
+    const escala = mayor > 0 ? redondearArriba(mayor) : 100;
+    const actual = datos[datos.length - 1];
+
+    const etiquetaEje = (valor) => `S/ ${numero(valor, valor < 100 && !Number.isInteger(valor) ? 1 : 0)}`;
+    const alto = (valor) => Math.max((valor / escala) * 100, 1);
+
+    const barra = (valor, clase, texto) => `
+      <span class="histograma-barra ${clase}"
+            style="height:${valor > 0 ? alto(valor) : 2}%;visibility:${valor > 0 ? 'visible' : 'hidden'}"
+            title="${esc(texto)}"></span>`;
+
+    // Aviso con la semana en curso.
+    semanaActualCaja.innerHTML = `
+      <div>
+        <strong>Esta semana:</strong> del sábado ${esc(fecha(semanaActual))} al viernes ${esc(
+      fecha(finSemana(semanaActual))
+    )}.
+        Se paga el sábado ${esc(fecha(diaDePago(semanaActual)))}.
+        Lleva producido <strong>${esc(soles(actual.total))}</strong>${
+      actual.pendiente > 0 ? ` y falta pagar <strong>${esc(soles(actual.pendiente))}</strong>` : ''
+    }.
+      </div>`;
+
+    grafico.innerHTML = `
+      <div class="histograma-scroll">
+        <div class="histograma">
+          <div class="histograma-eje">
+            <span style="top:0">${esc(etiquetaEje(escala))}</span>
+            <span style="top:95px;transform:translateY(-50%)">${esc(etiquetaEje(escala / 2))}</span>
+            <span style="top:190px;transform:translateY(-50%)">${esc(etiquetaEje(0))}</span>
+          </div>
+          <div class="histograma-plot">
+            <div class="histograma-rejilla">
+              <span style="top:0"></span>
+              <span style="top:95px"></span>
+              <span style="top:190px"></span>
+            </div>
+            <div class="histograma-columnas">
+              ${datos
+                .map((d) => {
+                  const altura = Math.max(alto(d.pagado), alto(d.pendiente));
+                  const total = d.total > 0 ? `<span class="histograma-total" style="bottom:calc(${altura}% + 6px)">${esc(soles(d.total))}</span>` : '';
+
+                  return `
+                <div class="histograma-columna">
+                  <div class="histograma-barras">
+                    ${total}
+                    ${barra(d.pagado, 'pagado', `Ya pagado: ${soles(d.pagado)}`)}
+                    ${barra(d.pendiente, 'pendiente', `Falta pagar: ${soles(d.pendiente)}`)}
+                  </div>
+                  <div class="histograma-etiqueta">${esc(etiquetaSemanaCorta(d.semana))}</div>
+                </div>`;
+                })
+                .join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="histograma-leyenda">
+        <span class="chip exito">Verde: ya pagado</span>
+        <span class="chip aviso">Ámbar: falta pagar</span>
+      </div>`;
+
+    if (mayor === 0) {
+      grafico.insertAdjacentHTML(
+        'beforeend',
+        '<p class="pista mt-2">Todavía no hay trabajo anotado. Cuando registres prendas u horas, aquí verás el pago de cada semana.</p>'
+      );
+    }
+  }
+
+  // ------------------------------------------------------------ listados
 
   function filaPartida(p) {
     const total = Number(p.total_partida ?? 0);
@@ -155,9 +286,7 @@ import Icon from '../components/Icon.astro';
   function filaPendiente(t) {
     return `
       <tr>
-        <td>
-          <a href="/pagos?trabajador=${esc(t.id)}">${esc(t.nombre)}</a>
-        </td>
+        <td><a href="/pagos?trabajador=${esc(t.id)}">${esc(t.nombre)}</a></td>
         <td class="num">${esc(numero(t.dias_trabajados))}</td>
         <td class="num negrita">${esc(soles(t.monto_pendiente))}</td>
       </tr>`;
@@ -170,23 +299,64 @@ import Icon from '../components/Icon.astro';
         <td>${esc(r.trabajador)}</td>
         <td>
           ${esc(r.operacion)}
-          <div class="texto-suave texto-pequeno">Partida ${esc(r.partida_codigo)} · Paq. ${esc(r.paquete_numero)} (${esc(r.paquete_talla)}) · ${esc(numero(r.cantidad))} u.</div>
+          <div class="texto-suave texto-pequeno">Partida ${esc(r.partida_codigo)} · Paq. ${esc(
+      r.paquete_numero
+    )} (${esc(r.paquete_talla)}) · ${esc(numero(r.cantidad))} u.</div>
         </td>
         <td class="num negrita">${esc(soles(r.subtotal))}</td>
       </tr>`;
   }
 
+  function filaHora(h) {
+    return `
+      <tr>
+        <td>${esc(fecha(h.fecha))}</td>
+        <td>${esc(h.trabajador)}</td>
+        <td>
+          Trabajo por horas
+          <div class="texto-suave texto-pequeno">${esc(hora12(h.hora_inicio))} – ${esc(hora12(h.hora_fin))} · ${esc(
+      horasTexto(h.minutos)
+    )}</div>
+        </td>
+        <td class="num negrita">${esc(soles(h.subtotal))}</td>
+      </tr>`;
+  }
+
   async function cargar() {
     try {
-      const [resumen, registros] = await Promise.all([resumenTablero(), listarRegistros({ limite: 8 })]);
-      const { kpis: k, partidas, trabajadores } = resumen;
+      const [resumen, prendas, horas] = await Promise.all([
+        resumenTablero(),
+        listarRegistros({ limite: 8 }),
+        listarHoras({ limite: 8 }),
+      ]);
+
+      const { kpis: k, partidas, trabajadores, semanas } = resumen;
 
       kpis.innerHTML = [
-        tarjetaKpi({ etiqueta: 'Partidas activas', valor: numero(k.partidasActivas), pie: `${numero(k.totalPartidas)} partidas en total` }),
-        tarjetaKpi({ etiqueta: 'Prendas en proceso', valor: numero(k.prendasEnProceso), pie: 'Según partidas activas' }),
-        tarjetaKpi({ etiqueta: 'Mano de obra registrada', valor: soles(k.manoObraRegistrada), pie: 'Todo el histórico' }),
-        tarjetaKpi({ etiqueta: 'Pendiente por pagar', valor: soles(k.pendientePorPagar), pie: `${soles(k.pagadoHistorico)} ya pagado`, resaltado: true }),
+        tarjetaKpi({
+          etiqueta: 'Partidas activas',
+          valor: numero(k.partidasActivas),
+          pie: `${numero(k.totalPartidas)} partidas en total`,
+        }),
+        tarjetaKpi({
+          etiqueta: 'Prendas en proceso',
+          valor: numero(k.prendasEnProceso),
+          pie: 'Según partidas activas',
+        }),
+        tarjetaKpi({
+          etiqueta: 'Mano de obra registrada',
+          valor: soles(k.manoObraRegistrada),
+          pie: 'Prendas + horas, todo el histórico',
+        }),
+        tarjetaKpi({
+          etiqueta: 'Pendiente por pagar',
+          valor: soles(k.pendientePorPagar),
+          pie: `${soles(k.pagadoHistorico)} ya pagado`,
+          resaltado: true,
+        }),
       ].join('');
+
+      pintarGrafico(semanas);
 
       const recientes = partidas.slice(0, 8);
       cuerpoPartidas.innerHTML = recientes.length
@@ -201,8 +371,12 @@ import Icon from '../components/Icon.astro';
         ? conPendiente.map(filaPendiente).join('')
         : '<tr><td colspan="3" class="sin-datos">No hay pagos pendientes.</td></tr>';
 
-      cuerpoRegistros.innerHTML = registros.length
-        ? registros.map(filaRegistro).join('')
+      const ultimos = [...prendas.map((r) => ({ fecha: r.fecha, html: filaRegistro(r) })), ...horas.map((h) => ({ fecha: h.fecha, html: filaHora(h) }))]
+        .sort((a, b) => b.fecha.localeCompare(a.fecha))
+        .slice(0, 8);
+
+      cuerpoRegistros.innerHTML = ultimos.length
+        ? ultimos.map((u) => u.html).join('')
         : '<tr><td colspan="4" class="sin-datos">Aún no se registra trabajo.</td></tr>';
     } catch (error) {
       avisoError(error);

@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import Icon from '../components/Icon.astro';
 ---
 
-<Layout titulo="Registro diario" subtitulo="Anota el trabajo hecho por cada trabajador. El sistema descuenta lo que ya está hecho en cada paquete.">
+<Layout titulo="Registro diario" subtitulo="Anota lo que hizo cada trabajador. El sistema ya descuenta lo que está hecho.">
   <div slot="acciones">
     <a class="boton secundario" href="/registros">
       <Icon name="lista" size={16} /> Ver todos los registros
@@ -13,19 +13,15 @@ import Icon from '../components/Icon.astro';
   <div class="tarjeta">
     <div class="tarjeta-cabecera">
       <div>
-        <h2>Nuevo registro de trabajo</h2>
-        <p>Elige fecha, trabajador, partida y paquete. Los precios se toman de la partida.</p>
+        <h2>Registrar trabajo</h2>
+        <p>Elige la partida, el paquete y quién trabajó. Después revisa las cantidades y guarda.</p>
       </div>
     </div>
     <div class="tarjeta-cuerpo">
       <div class="formulario-rejilla">
         <div class="campo">
-          <label for="fecha">Fecha del trabajo</label>
+          <label for="fecha">¿De qué día es el trabajo?</label>
           <input type="date" id="fecha" />
-        </div>
-        <div class="campo">
-          <label for="trabajador">Trabajador</label>
-          <select id="trabajador"><option value="">Cargando…</option></select>
         </div>
         <div class="campo">
           <label for="partida">Partida</label>
@@ -35,64 +31,50 @@ import Icon from '../components/Icon.astro';
           <label for="paquete">Paquete</label>
           <select id="paquete" disabled><option value="">Elige una partida</option></select>
         </div>
+        <div class="campo">
+          <label for="trabajador">¿Quién trabajó?</label>
+          <select id="trabajador"><option value="">Cargando…</option></select>
+        </div>
       </div>
 
-      <div id="resumen-partida" class="fila mt-4"></div>
+      <p class="pista mt-3" id="resumen-partida"></p>
 
       <div class="bloque mt-4">
         <div class="bloque-cabecera">
-          <span>Operaciones del paquete</span>
           <span class="fila">
-            <button type="button" class="boton sutil pequeno" id="llenar-todo">Llenar con lo que falta</button>
-            <button type="button" class="boton sutil pequeno" id="vaciar">Vaciar</button>
+            ¿Cuántas prendas hizo?
+            <span class="chip primario hidden" id="chip-paquete"></span>
           </span>
+          <button type="button" class="boton sutil pequeno" id="vaciar">Borrar cantidades</button>
         </div>
-        <div class="tabla-envoltura">
-          <table class="tabla">
-            <thead>
-              <tr>
-                <th>Operación</th>
-                <th class="num">Precio</th>
-                <th class="num">Ya hecho</th>
-                <th class="num">Falta</th>
-                <th class="num" style="min-width:150px">Cantidad a registrar</th>
-                <th class="num">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody id="cuerpo-operaciones">
-              <tr><td colspan="6" class="sin-datos">Elige una partida y un paquete para ver las operaciones.</td></tr>
-            </tbody>
-            <tfoot id="pie-operaciones" class="oculto">
-              <tr>
-                <td colspan="3">Total a pagar por este registro</td>
-                <td class="num" id="total-piezas">0</td>
-                <td></td>
-                <td class="num" id="total-registro">S/ 0.00</td>
-              </tr>
-            </tfoot>
-          </table>
+        <div class="bloque-cuerpo" id="lista-operaciones">
+          <div class="sin-datos">Elige una partida y un paquete para ver las operaciones.</div>
         </div>
       </div>
 
-      <div class="campo mt-4">
-        <label for="notas">Notas (opcional)</label>
-        <input type="text" id="notas" placeholder="Observaciones del lote, merma, etc." />
-      </div>
-
-      <div class="fila separado mt-4">
-        <span class="pista" id="pista-guardar"></span>
-        <button type="button" class="boton" id="guardar">
-          <Icon name="check" size={16} /> Guardar registro
+      <div class="resumen-pago">
+        <div>
+          <div class="resumen-etiqueta" id="resumen-titulo">Se le pagará</div>
+          <div class="resumen-monto" id="total-registro">S/ 0.00</div>
+          <div class="pista" id="pista-guardar">Elige al trabajador y las cantidades.</div>
+        </div>
+        <button type="button" class="boton grande" id="guardar">
+          <Icon name="check" size={17} /> Guardar
         </button>
       </div>
+
+      <details class="mt-3">
+        <summary class="pista" style="cursor:pointer">Agregar una nota (opcional)</summary>
+        <input type="text" id="notas" class="mt-2" placeholder="Ej. faltó hilo, se repuso una prenda…" />
+      </details>
     </div>
   </div>
 
   <div class="tarjeta">
     <div class="tarjeta-cabecera">
       <div>
-        <h2>Registros del día <span class="texto-suave" id="titulo-dia"></span></h2>
-        <p>Puedes borrar una línea si te equivocaste.</p>
+        <h2>Lo que se registró <span class="texto-suave" id="titulo-dia"></span></h2>
+        <p>Si te equivocaste, borra la línea y vuelve a registrarla.</p>
       </div>
     </div>
     <div class="tarjeta-cuerpo sin-padding">
@@ -100,24 +82,19 @@ import Icon from '../components/Icon.astro';
         <table class="tabla">
           <thead>
             <tr>
-              <th>Trabajador</th>
-              <th>Partida</th>
-              <th>Paquete</th>
-              <th>Operación</th>
-              <th class="num">Cant.</th>
-              <th class="num">Importe</th>
-              <th class="num">Estado</th>
-              <th></th>
+              <th>Trabajador y trabajo</th>
+              <th class="num" style="width:140px">Se le paga</th>
+              <th style="width:64px"></th>
             </tr>
           </thead>
           <tbody id="cuerpo-dia">
-            <tr><td colspan="8" class="sin-datos">Cargando…</td></tr>
+            <tr><td colspan="3" class="sin-datos">Cargando…</td></tr>
           </tbody>
-          <tfoot id="pie-dia" class="oculto">
+          <tfoot id="pie-dia" class="hidden">
             <tr>
-              <td colspan="5">Total del día</td>
+              <td>Total del día</td>
               <td class="num" id="total-dia">S/ 0.00</td>
-              <td colspan="2"></td>
+              <td></td>
             </tr>
           </tfoot>
         </table>
@@ -136,25 +113,28 @@ import Icon from '../components/Icon.astro';
   const elPartida = qs('#partida');
   const elPaquete = qs('#paquete');
   const elNotas = qs('#notas');
-  const cuerpoOperaciones = qs('#cuerpo-operaciones');
-  const pieOperaciones = qs('#pie-operaciones');
-  const totalRegistro = qs('#total-registro');
-  const totalPiezas = qs('#total-piezas');
+  const listaOperaciones = qs('#lista-operaciones');
+  const chipPaquete = qs('#chip-paquete');
   const resumenPartida = qs('#resumen-partida');
+  const resumenTitulo = qs('#resumen-titulo');
+  const totalRegistro = qs('#total-registro');
+  const pistaGuardar = qs('#pista-guardar');
   const cuerpoDia = qs('#cuerpo-dia');
   const pieDia = qs('#pie-dia');
   const totalDia = qs('#total-dia');
   const tituloDia = qs('#titulo-dia');
   const botonGuardar = qs('#guardar');
-  const pistaGuardar = qs('#pista-guardar');
 
   const estado = {
     trabajadores: [],
     partidas: [],
-    avance: [], // filas de v_paquete_operacion_avance del paquete elegido
-    registrosPaquete: [], // trabajo ya hecho en el paquete (quién lo hizo)
+    avance: [],
+    registrosPaquete: [],
     paqueteActual: null,
   };
+
+  const vacio = (mensaje) =>
+    `<div class="sin-datos">${esc(mensaje)}</div>`;
 
   function opciones(select, lista, { placeholder = 'Selecciona…', valor = (x) => x.id, texto = (x) => x.nombre } = {}) {
     select.innerHTML =
@@ -182,8 +162,17 @@ import Icon from '../components/Icon.astro';
     const params = new URLSearchParams(location.search);
     const partidaParam = params.get('partida');
     const trabajadorParam = params.get('trabajador');
-    if (partidaParam && estado.partidas.some((p) => p.id === partidaParam)) elPartida.value = partidaParam;
-    if (trabajadorParam && estado.trabajadores.some((t) => t.id === trabajadorParam)) elTrabajador.value = trabajadorParam;
+
+    if (partidaParam && estado.partidas.some((p) => p.id === partidaParam)) {
+      elPartida.value = partidaParam;
+    } else if (estado.partidas.length === 1) {
+      // Si solo hay una partida, se elige sola para ahorrar pasos.
+      elPartida.value = estado.partidas[0].id;
+    }
+
+    if (trabajadorParam && estado.trabajadores.some((t) => t.id === trabajadorParam)) {
+      elTrabajador.value = trabajadorParam;
+    }
 
     if (elPartida.value) await alCambiarPartida(params.get('paquete'));
   }
@@ -196,24 +185,23 @@ import Icon from '../components/Icon.astro';
     estado.registrosPaquete = [];
     estado.paqueteActual = null;
     elPaquete.disabled = true;
-    resumenPartida.innerHTML = '';
-    cuerpoOperaciones.innerHTML = '<tr><td colspan="6" class="sin-datos">Cargando…</td></tr>';
-    pieOperaciones.classList.add('oculto');
+    chipPaquete.classList.add('hidden');
+    resumenPartida.textContent = '';
+    listaOperaciones.innerHTML = vacio('Cargando…');
 
     if (!partidaId) {
       elPaquete.innerHTML = '<option value="">Elige una partida</option>';
-      cuerpoOperaciones.innerHTML = '<tr><td colspan="6" class="sin-datos">Elige una partida y un paquete para ver las operaciones.</td></tr>';
+      listaOperaciones.innerHTML = vacio('Elige una partida y un paquete para ver las operaciones.');
+      recalcular();
       return;
     }
 
     const paquetes = await listarPaquetes(partidaId);
     const partida = estado.partidas.find((p) => p.id === partidaId);
 
-    resumenPartida.innerHTML = `
-      <span class="chip primario">${numero(partida?.num_operaciones ?? 0)} operaciones</span>
-      <span class="chip">${numero(paquetes.length)} paquetes</span>
-      <span class="chip info">Precio prenda: ${soles(partida?.precio_prenda ?? 0)}</span>
-      <span class="chip exito">Total partida: ${soles(partida?.total_partida ?? 0)}</span>`;
+    resumenPartida.textContent = `Partida ${partida?.codigo ?? ''} · ${numero(partida?.num_paquetes ?? 0)} paquetes · ${numero(
+      partida?.total_prendas ?? 0
+    )} prendas · precio de la prenda ${soles(partida?.precio_prenda ?? 0)}`;
 
     opciones(elPaquete, paquetes, {
       placeholder: 'Elige el paquete',
@@ -222,7 +210,8 @@ import Icon from '../components/Icon.astro';
 
     if (paquetes.length === 0) {
       elPaquete.innerHTML = '<option value="">Sin paquetes</option>';
-      cuerpoOperaciones.innerHTML = '<tr><td colspan="6" class="sin-datos">Esta partida todavía no tiene paquetes.</td></tr>';
+      listaOperaciones.innerHTML = vacio('Esta partida todavía no tiene paquetes.');
+      recalcular();
       return;
     }
 
@@ -231,13 +220,13 @@ import Icon from '../components/Icon.astro';
     await cargarAvance();
   }
 
-  /** Trae lo pendiente del paquete y quién ya trabajó en él. */
+  /** Carga lo pendiente del paquete y el trabajo que ya hicieron otros. */
   async function cargarAvance() {
     const paqueteId = elPaquete.value;
     estado.paqueteActual = null;
     if (!paqueteId) return;
 
-    cuerpoOperaciones.innerHTML = '<tr><td colspan="6" class="sin-datos">Cargando…</td></tr>';
+    listaOperaciones.innerHTML = vacio('Cargando…');
 
     const [avance, registros] = await Promise.all([
       listarAvancePaquete(paqueteId),
@@ -246,14 +235,19 @@ import Icon from '../components/Icon.astro';
 
     estado.avance = avance;
     estado.registrosPaquete = registros;
-    estado.paqueteActual = avance.length
-      ? {
-          id: paqueteId,
-          numero: avance[0].paquete_numero,
-          talla: avance[0].paquete_talla,
-          cantidad: avance[0].cantidad_paquete,
-        }
-      : null;
+
+    if (avance.length > 0) {
+      estado.paqueteActual = {
+        id: paqueteId,
+        numero: avance[0].paquete_numero,
+        talla: avance[0].paquete_talla,
+        cantidad: avance[0].cantidad_paquete,
+      };
+      chipPaquete.textContent = `Paquete ${avance[0].paquete_numero} · Talla ${avance[0].paquete_talla} · ${avance[0].cantidad_paquete} prendas`;
+      chipPaquete.classList.remove('hidden');
+    } else {
+      chipPaquete.classList.add('hidden');
+    }
 
     renderOperaciones();
     llenarTodo();
@@ -268,43 +262,45 @@ import Icon from '../components/Icon.astro';
       porTrabajador.set(r.trabajador, (porTrabajador.get(r.trabajador) ?? 0) + Number(r.cantidad));
     });
 
-    return 'Hecho por: ' + [...porTrabajador].map(([nombre, cant]) => `${nombre} ${numero(cant)}`).join(' · ');
+    return 'Ya lo hizo: ' + [...porTrabajador].map(([nombre, cant]) => `${nombre} ${numero(cant)}`).join(' · ');
+  }
+
+  function filaOperacion(fila) {
+    const completa = Number(fila.pendientes) === 0;
+    const hechoPor = textoHechoPor(fila.partida_operacion_id);
+
+    const detalle = completa
+      ? ['Ya está completo', hechoPor].filter(Boolean).join(' · ')
+      : [`Faltan ${numero(fila.pendientes)} de ${numero(fila.cantidad_paquete)}`, hechoPor].filter(Boolean).join(' · ');
+
+    return `
+      <div class="fila-operacion"
+           data-operacion="${esc(fila.partida_operacion_id)}"
+           data-nombre="${esc(fila.operacion)}"
+           data-precio="${Number(fila.precio)}"
+           data-pendientes="${Number(fila.pendientes)}">
+        <div class="op-info">
+          <div class="op-nombre">
+            ${esc(fila.operacion)}
+            ${completa ? '<span class="chip exito">Completo</span>' : ''}
+          </div>
+          <div class="texto-suave texto-pequeno">${esc(detalle)} · ${esc(precioUnitario(fila.precio))} por prenda</div>
+        </div>
+        <input type="number" class="cantidad" min="0" step="1" value="0" data-cantidad />
+        <div class="op-importe">${esc(soles(0))}</div>
+      </div>`;
   }
 
   function renderOperaciones() {
     if (estado.avance.length === 0) {
-      cuerpoOperaciones.innerHTML = '<tr><td colspan="6" class="sin-datos">Esta partida no tiene operaciones registradas.</td></tr>';
-      pieOperaciones.classList.add('oculto');
+      listaOperaciones.innerHTML = vacio('Esta partida no tiene operaciones.');
       return;
     }
 
-    cuerpoOperaciones.innerHTML = estado.avance
-      .map((fila) => {
-        const hechoPor = textoHechoPor(fila.partida_operacion_id);
-        const completa = Number(fila.pendientes) === 0;
-
-        return `
-        <tr data-operacion="${esc(fila.partida_operacion_id)}" data-precio="${Number(fila.precio)}" data-pendientes="${Number(fila.pendientes)}" data-nombre="${esc(fila.operacion)}">
-          <td>
-            <span class="negrita">${esc(fila.operacion)}</span>
-            ${completa ? '<span class="chip exito">Completa</span>' : ''}
-            ${hechoPor ? `<div class="texto-suave texto-pequeno">${esc(hechoPor)}</div>` : ''}
-          </td>
-          <td class="num">${esc(precioUnitario(fila.precio))}</td>
-          <td class="num ${Number(fila.realizadas) ? '' : 'texto-suave'}">
-            ${Number(fila.realizadas) ? `${numero(fila.realizadas)} / ${numero(fila.cantidad_paquete)}` : '—'}
-          </td>
-          <td class="num ${completa ? 'texto-suave' : 'negrita'}">${numero(fila.pendientes)}</td>
-          <td class="num"><input type="number" class="cantidad" min="0" step="1" value="0" data-cantidad /></td>
-          <td class="num subtotal">${esc(soles(0))}</td>
-        </tr>`;
-      })
-      .join('');
-
-    cuerpoOperaciones.querySelectorAll('[data-cantidad]').forEach((input) => {
+    listaOperaciones.innerHTML = estado.avance.map(filaOperacion).join('');
+    listaOperaciones.querySelectorAll('[data-cantidad]').forEach((input) => {
       input.addEventListener('input', recalcular);
     });
-    pieOperaciones.classList.remove('oculto');
     recalcular();
   }
 
@@ -312,38 +308,35 @@ import Icon from '../components/Icon.astro';
     let total = 0;
     let piezas = 0;
 
-    cuerpoOperaciones.querySelectorAll('tr[data-operacion]').forEach((fila) => {
+    listaOperaciones.querySelectorAll('.fila-operacion').forEach((fila) => {
       const precio = Number(fila.dataset.precio);
       const cantidad = Number(fila.querySelector('[data-cantidad]').value) || 0;
       const subtotal = precio * cantidad;
-      fila.querySelector('.subtotal').textContent = soles(subtotal);
+      fila.querySelector('.op-importe').textContent = soles(subtotal);
       total += subtotal;
       piezas += cantidad;
     });
 
     totalRegistro.textContent = soles(total);
-    totalPiezas.textContent = numero(piezas);
 
     const trabajador = estado.trabajadores.find((t) => t.id === elTrabajador.value);
-    const paquete = estado.paqueteActual;
-    const partida = estado.partidas.find((p) => p.id === elPartida.value);
-
+    resumenTitulo.textContent = trabajador ? `Se le pagará a ${trabajador.nombre}` : 'Se le pagará';
     pistaGuardar.textContent =
-      trabajador && paquete && piezas > 0
-        ? `${trabajador.nombre} · Partida ${partida?.codigo ?? ''} · Paquete ${paquete.numero} (${paquete.talla}) · ${numero(piezas)} prendas`
-        : 'Completa trabajador, partida, paquete y cantidades.';
+      piezas > 0
+        ? `${numero(piezas)} prenda(s) en total`
+        : 'Elige al trabajador y las cantidades que hizo.';
   }
 
   /** Rellena cada operación con las prendas que faltan por hacer. */
   function llenarTodo() {
-    cuerpoOperaciones.querySelectorAll('tr[data-operacion]').forEach((fila) => {
+    listaOperaciones.querySelectorAll('.fila-operacion').forEach((fila) => {
       fila.querySelector('[data-cantidad]').value = Number(fila.dataset.pendientes) || 0;
     });
     recalcular();
   }
 
   function vaciar() {
-    cuerpoOperaciones.querySelectorAll('[data-cantidad]').forEach((input) => {
+    listaOperaciones.querySelectorAll('[data-cantidad]').forEach((input) => {
       input.value = 0;
     });
     recalcular();
@@ -353,7 +346,7 @@ import Icon from '../components/Icon.astro';
 
   function recolectarLineas() {
     const lineas = [];
-    cuerpoOperaciones.querySelectorAll('tr[data-operacion]').forEach((fila) => {
+    listaOperaciones.querySelectorAll('.fila-operacion').forEach((fila) => {
       const cantidad = Number(fila.querySelector('[data-cantidad]').value) || 0;
       if (cantidad > 0) {
         lineas.push({
@@ -370,13 +363,14 @@ import Icon from '../components/Icon.astro';
   async function guardar() {
     const fechaTrabajo = elFecha.value;
     if (!fechaTrabajo) return toast('Elige la fecha del trabajo.', 'aviso');
-    if (!elTrabajador.value) return toast('Elige al trabajador.', 'aviso');
+    if (!elTrabajador.value) return toast('Elige quién trabajó.', 'aviso');
     if (!elPartida.value) return toast('Elige la partida.', 'aviso');
     if (!elPaquete.value) return toast('Elige el paquete.', 'aviso');
 
     const lineas = recolectarLineas();
-    if (lineas.length === 0) return toast('Ingresa al menos una cantidad mayor a cero.', 'aviso');
+    if (lineas.length === 0) return toast('Escribe cuántas prendas hizo.', 'aviso');
 
+    const trabajador = estado.trabajadores.find((t) => t.id === elTrabajador.value);
     const datos = {
       fecha: fechaTrabajo,
       trabajadorId: elTrabajador.value,
@@ -397,26 +391,28 @@ import Icon from '../components/Icon.astro';
 
       if (repetidos.length > 0) {
         const continuar = await confirmar({
-          titulo: 'Ya hay trabajo registrado',
-          mensaje: `Este trabajador ya tiene ${repetidos.length} línea(s) registradas en ese paquete para el ${fecha(fechaTrabajo)}. Si continúas se sumarán como un registro nuevo.`,
-          textoAceptar: 'Registrar igualmente',
+          titulo: 'Ya está registrado',
+          mensaje: `${trabajador?.nombre ?? 'Este trabajador'} ya tiene trabajo anotado en este paquete para el ${fecha(
+            fechaTrabajo
+          )}.\n\n¿Quieres anotarlo otra vez?`,
+          textoAceptar: 'Sí, anotar igual',
         });
         if (!continuar) return;
       }
 
-      // Aviso por exceso: se registra más de lo que falta por hacer.
+      // Aviso por exceso: se anotan más prendas de las que faltan.
       const excesos = lineas.filter((l) => l.cantidad > l.pendientes);
       let permitirExceso = false;
 
       if (excesos.length > 0) {
         const detalle = excesos
-          .map((l) => `• ${l.nombre}: registras ${numero(l.cantidad)} y solo faltan ${numero(l.pendientes)}`)
+          .map((l) => `• ${l.nombre}: anotas ${numero(l.cantidad)} y solo faltan ${numero(l.pendientes)}`)
           .join('\n');
 
         const continuar = await confirmar({
-          titulo: 'Más prendas de las pendientes',
-          mensaje: `${detalle}\n\nEsas prendas ya fueron registradas (por este trabajador o por otro). Si continúas, se pagarán de nuevo.\n\n¿Registrar el trabajo extra igualmente?`,
-          textoAceptar: 'Sí, registrar igual',
+          titulo: 'Más prendas de las que faltan',
+          mensaje: `${detalle}\n\nEsas prendas ya fueron anotadas por alguien más. Si continúas se pagarían dos veces.\n\n¿Anotar igual?`,
+          textoAceptar: 'Sí, anotar igual',
           peligro: true,
         });
         if (!continuar) return;
@@ -428,20 +424,19 @@ import Icon from '../components/Icon.astro';
       try {
         await registrarTrabajo(datos, { permitirExceso });
       } catch (error) {
-        // Otra persona pudo registrar prendas mientras completabas el formulario.
         if (!esErrorDeExceso(error)) throw error;
 
         const continuar = await confirmar({
-          titulo: 'Más prendas de las pendientes',
-          mensaje: `${mensajeDeError(error)}\n\n¿Registrar el trabajo extra igualmente?`,
-          textoAceptar: 'Sí, registrar igual',
+          titulo: 'Más prendas de las que faltan',
+          mensaje: `${mensajeDeError(error)}\n\n¿Anotar igual?`,
+          textoAceptar: 'Sí, anotar igual',
           peligro: true,
         });
         if (!continuar) return;
         await registrarTrabajo(datos, { permitirExceso: true });
       }
 
-      toast('Registro guardado correctamente.', 'exito');
+      toast('Listo, se guardó el trabajo.', 'exito');
       elNotas.value = '';
       await cargarAvance();
       await cargarDia();
@@ -457,12 +452,13 @@ import Icon from '../components/Icon.astro';
   async function cargarDia() {
     const dia = elFecha.value || hoyISO();
     tituloDia.textContent = `· ${fecha(dia)}`;
-    cuerpoDia.innerHTML = '<tr><td colspan="8" class="sin-datos">Cargando…</td></tr>';
+    cuerpoDia.innerHTML = '<tr><td colspan="3" class="sin-datos">Cargando…</td></tr>';
 
     const registros = await listarRegistros({ desde: dia, hasta: dia, limite: 500 });
+
     if (registros.length === 0) {
-      cuerpoDia.innerHTML = '<tr><td colspan="8" class="sin-datos">No hay registros para esta fecha.</td></tr>';
-      pieDia.classList.add('oculto');
+      cuerpoDia.innerHTML = '<tr><td colspan="3" class="sin-datos">Todavía no anotaste trabajo de este día.</td></tr>';
+      pieDia.classList.add('hidden');
       return;
     }
 
@@ -470,15 +466,18 @@ import Icon from '../components/Icon.astro';
       .map(
         (r) => `
         <tr>
-          <td class="negrita">${esc(r.trabajador)}</td>
-          <td>${esc(r.partida_codigo)}</td>
-          <td>${esc(r.paquete_numero)} · ${esc(r.paquete_talla)}</td>
-          <td>${esc(r.operacion)}</td>
-          <td class="num">${esc(numero(r.cantidad))}</td>
+          <td>
+            <div class="negrita">
+              ${esc(r.trabajador)}
+              ${r.pago_id ? '<span class="chip exito">Ya pagado</span>' : ''}
+            </div>
+            <div class="texto-suave texto-pequeno">
+              ${esc(r.operacion)} · Partida ${esc(r.partida_codigo)} · Paquete ${esc(r.paquete_numero)} (${esc(r.paquete_talla)}) · ${esc(numero(r.cantidad))} u.
+            </div>
+          </td>
           <td class="num negrita">${esc(soles(r.subtotal))}</td>
-          <td class="num">${r.pago_id ? '<span class="chip exito">Pagado</span>' : '<span class="chip aviso">Pendiente</span>'}</td>
           <td class="acciones-fila">
-            <button type="button" class="boton icono peligro" data-borrar="${esc(r.id)}" title="Eliminar">
+            <button type="button" class="boton icono peligro" data-borrar="${esc(r.id)}" title="Borrar">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </td>
@@ -486,22 +485,21 @@ import Icon from '../components/Icon.astro';
       )
       .join('');
 
-    const total = registros.reduce((suma, r) => suma + Number(r.subtotal), 0);
-    totalDia.textContent = soles(total);
-    pieDia.classList.remove('oculto');
+    totalDia.textContent = soles(registros.reduce((suma, r) => suma + Number(r.subtotal), 0));
+    pieDia.classList.remove('hidden');
 
     cuerpoDia.querySelectorAll('[data-borrar]').forEach((boton) => {
       boton.addEventListener('click', async () => {
         const ok = await confirmar({
-          titulo: 'Eliminar registro',
-          mensaje: '¿Seguro que deseas eliminar esta línea de trabajo?',
-          textoAceptar: 'Eliminar',
+          titulo: 'Borrar esta línea',
+          mensaje: '¿Seguro que quieres borrarla? Después puedes volver a anotarla.',
+          textoAceptar: 'Borrar',
           peligro: true,
         });
         if (!ok) return;
         try {
           await eliminarRegistro(boton.dataset.borrar);
-          toast('Registro eliminado.', 'exito');
+          toast('Línea borrada.', 'exito');
           await cargarAvance();
           await cargarDia();
         } catch (error) {
@@ -518,17 +516,17 @@ import Icon from '../components/Icon.astro';
   elPartida.addEventListener('change', () => alCambiarPartida());
   elPaquete.addEventListener('change', cargarAvance);
   elTrabajador.addEventListener('change', recalcular);
-  qs('#llenar-todo').addEventListener('click', llenarTodo);
   qs('#vaciar').addEventListener('click', vaciar);
   botonGuardar.addEventListener('click', guardar);
 
   (async () => {
     try {
       await cargarCatalogos();
+      recalcular();
       await cargarDia();
     } catch (error) {
       avisoError(error);
-      cuerpoOperaciones.innerHTML = `<tr><td colspan="6" class="sin-datos">${esc(error.message)}</td></tr>`;
+      listaOperaciones.innerHTML = vacio(error.message);
     }
   })();
 </script>

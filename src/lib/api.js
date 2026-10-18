@@ -272,11 +272,16 @@ export async function listarTrabajadoresResumen() {
   return unwrap(await supabase.from('v_trabajador_resumen').select('*').order('nombre'));
 }
 
-export async function crearTrabajador({ nombre, documento, telefono }) {
+export async function crearTrabajador({ nombre, documento, telefono, tarifa_hora }) {
   return unwrap(
     await supabase
       .from('trabajadores')
-      .insert({ nombre: nombre.trim(), documento: documento ?? null, telefono: telefono ?? null })
+      .insert({
+        nombre: nombre.trim(),
+        documento: documento ?? null,
+        telefono: telefono ?? null,
+        tarifa_hora: aNumero(tarifa_hora),
+      })
       .select()
       .single()
   );
@@ -360,6 +365,62 @@ export async function eliminarRegistro(id) {
   return unwrap(await supabase.from('registros_trabajo').delete().eq('id', id));
 }
 
+// ------------------------------------------------------- trabajo por horas
+
+/** Rangos de horas trabajadas (v_horas_detalle) con filtros opcionales. */
+export async function listarHoras(filtros = {}) {
+  let consulta = supabase.from('v_horas_detalle').select('*');
+
+  if (filtros.desde) consulta = consulta.gte('fecha', filtros.desde);
+  if (filtros.hasta) consulta = consulta.lte('fecha', filtros.hasta);
+  if (filtros.trabajadorId) consulta = consulta.eq('trabajador_id', filtros.trabajadorId);
+  if (filtros.estado === 'pendiente') consulta = consulta.is('pago_id', null);
+  if (filtros.estado === 'pagado') consulta = consulta.not('pago_id', 'is', null);
+
+  return unwrap(
+    await consulta
+      .order('fecha', { ascending: false })
+      .order('hora_inicio', { ascending: true })
+      .limit(filtros.limite ?? 800)
+  );
+}
+
+/** Anota un rango de horas trabajadas; el importe se calcula solo. */
+export async function registrarHoras(datos) {
+  return unwrap(
+    await supabase.rpc('fn_registrar_horas', {
+      p_fecha: datos.fecha,
+      p_trabajador_id: datos.trabajadorId,
+      p_hora_inicio: datos.horaInicio,
+      p_hora_fin: datos.horaFin,
+      p_tarifa: aNumero(datos.tarifa) ?? 0,
+      p_notas: datos.notas ?? null,
+    })
+  );
+}
+
+export async function actualizarHoras(id, cambios) {
+  const limpio = { ...cambios };
+  if ('tarifa' in limpio) limpio.tarifa = aNumero(limpio.tarifa) ?? 0;
+  return unwrap(await supabase.from('registros_horas').update(limpio).eq('id', id).select().single());
+}
+
+export async function eliminarHoras(id) {
+  return unwrap(await supabase.from('registros_horas').delete().eq('id', id));
+}
+
+/** Resumen del taller por semana (sábado a viernes). */
+export async function listarSemanas() {
+  return unwrap(await supabase.from('v_semana_resumen').select('*').order('semana', { ascending: false }));
+}
+
+/** Líneas de horas incluidas en un pago. */
+export async function lineasDePagoHoras(pagoId) {
+  return unwrap(
+    await supabase.from('v_horas_detalle').select('*').eq('pago_id', pagoId).order('fecha', { ascending: true })
+  );
+}
+
 // ------------------------------------------------------------------ pagos
 
 /** Líneas pendientes de pago de un trabajador (para calcular rangos). */
@@ -428,10 +489,11 @@ export async function anularPago(pagoId) {
 
 /** Datos agregados para el tablero principal. */
 export async function resumenTablero() {
-  const [partidas, trabajadores, pagos] = await Promise.all([
+  const [partidas, trabajadores, pagos, semanas] = await Promise.all([
     listarPartidas(),
     listarTrabajadoresResumen(),
     listarPagos({}),
+    listarSemanas(),
   ]);
 
   const activas = partidas.filter((p) => p.estado === 'en_proceso');
@@ -441,13 +503,24 @@ export async function resumenTablero() {
     partidas,
     trabajadores,
     pagos,
+    semanas,
     kpis: {
       partidasActivas: activas.length,
       prendasEnProceso: total(activas, 'total_prendas'),
       totalPartidas: partidas.length,
-      manoObraRegistrada: total(partidas, 'monto_registrado'),
+      manoObraRegistrada: total(trabajadores, 'monto_total'),
       pendientePorPagar: total(trabajadores, 'monto_pendiente'),
       pagadoHistorico: total(trabajadores, 'monto_pagado'),
     },
   };
+}
+
+/** Todo el trabajo pendiente del taller: prendas y horas. */
+export async function pendientesDelTaller() {
+  const [prendas, horas] = await Promise.all([
+    listarRegistros({ estado: 'pendiente', limite: 2000 }),
+    listarHoras({ estado: 'pendiente', limite: 2000 }),
+  ]);
+
+  return { prendas, horas };
 }
