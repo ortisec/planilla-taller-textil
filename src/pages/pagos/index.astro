@@ -3,128 +3,54 @@ import Layout from '../../layouts/Layout.astro';
 import Icon from '../../components/Icon.astro';
 ---
 
-<Layout titulo="Pagos" subtitulo="Liquida el trabajo pendiente por trabajador y rango de fechas.">
+<Layout titulo="Planilla" subtitulo="Cuánto se debe pagar a cada trabajador. La semana va de sábado a viernes.">
+  <div slot="acciones">
+    <a class="boton secundario" href="/trabajo">
+      <Icon name="documento" size={16} /> Anotar prendas
+    </a>
+    <a class="boton secundario" href="/horas">
+      <Icon name="reloj" size={16} /> Anotar horas
+    </a>
+  </div>
+
   <div class="rejilla kpi mb-2">
-    <div class="kpi">
-      <div class="kpi-etiqueta"><Icon name="dinero" size={15} /> Total pendiente</div>
-      <div class="kpi-valor" id="kpi-pendiente">—</div>
-      <div class="kpi-pie">Trabajo registrado sin pagar</div>
+    <div class="kpi resaltado">
+      <div class="kpi-etiqueta"><Icon name="dinero" size={15} /> Total por pagar</div>
+      <div class="kpi-valor" id="kpi-total">—</div>
+      <div class="kpi-pie">A todos los trabajadores</div>
     </div>
     <div class="kpi">
-      <div class="kpi-etiqueta"><Icon name="check" size={15} /> Total pagado</div>
+      <div class="kpi-etiqueta"><Icon name="personas" size={15} /> Personas por pagar</div>
+      <div class="kpi-valor" id="kpi-personas">—</div>
+      <div class="kpi-pie">Con trabajo pendiente</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-etiqueta"><Icon name="check" size={15} /> Ya pagado</div>
       <div class="kpi-valor" id="kpi-pagado">—</div>
       <div class="kpi-pie" id="kpi-pagos">—</div>
     </div>
   </div>
 
-  <div class="tarjeta">
-    <div class="tarjeta-cabecera">
+  <div id="sin-pendientes" class="alerta exito hidden mb-2">
+    <Icon name="check" size={18} />
+    <div>
+      <strong>¡Todo al día!</strong>
       <div>
-        <h2>Liquidar pago</h2>
-        <p>Selecciona al trabajador y el rango de fechas que vas a pagar.</p>
-      </div>
-    </div>
-    <div class="tarjeta-cuerpo">
-      <div class="formulario-rejilla">
-        <div class="campo">
-          <label for="trabajador">Trabajador</label>
-          <select id="trabajador"><option value="">Elige al trabajador</option></select>
-        </div>
-        <div class="campo">
-          <label for="desde">Fecha inicial</label>
-          <input type="date" id="desde" />
-        </div>
-        <div class="campo">
-          <label for="hasta">Fecha final</label>
-          <input type="date" id="hasta" />
-        </div>
-        <div class="campo">
-          <label for="fecha-pago">Fecha del pago</label>
-          <input type="date" id="fecha-pago" />
-        </div>
-        <div class="campo">
-          <label for="notas">Notas</label>
-          <input type="text" id="notas" placeholder="Opcional" />
-        </div>
-      </div>
-
-      <div class="fila mt-2">
-        <button type="button" class="boton secundario pequeno" id="rango-completo">Todo lo pendiente</button>
-        <button type="button" class="boton secundario pequeno" id="rango-mes">Este mes</button>
-      </div>
-
-      <div class="bloque mt-2">
-        <div class="bloque-cabecera">
-          <span>Vista previa del pago</span>
-          <span class="chip primario" id="chip-lineas">0 líneas</span>
-        </div>
-        <div class="tabla-envoltura">
-          <table class="tabla">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Partida</th>
-                <th>Paquete</th>
-                <th>Operación</th>
-                <th class="num">Cant.</th>
-                <th class="num">Importe</th>
-              </tr>
-            </thead>
-            <tbody id="cuerpo-preview">
-              <tr><td colspan="6" class="sin-datos">Elige trabajador y rango de fechas.</td></tr>
-            </tbody>
-            <tfoot id="pie-preview" class="oculto">
-              <tr>
-                <td colspan="5">Total a pagar</td>
-                <td class="num" id="total-preview">S/ 0.00</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-
-      <div class="fila separado mt-3">
-        <span class="pista" id="pista-pago"></span>
-        <button type="button" class="boton" id="registrar">
-          <Icon name="check" size={16} /> Registrar pago
-        </button>
+        Nadie tiene pagos pendientes. Cuando anotes trabajo en
+        <a href="/trabajo">Registro diario</a> o <a href="/horas">Trabajo por horas</a> aparecerá aquí.
       </div>
     </div>
   </div>
 
-  <div class="tarjeta">
-    <div class="tarjeta-cabecera">
-      <div>
-        <h2>Pendiente por trabajador</h2>
-        <p>Días trabajados y monto que falta liquidar.</p>
-      </div>
-    </div>
-    <div class="tarjeta-cuerpo sin-padding">
-      <div class="tabla-envoltura">
-        <table class="tabla">
-          <thead>
-            <tr>
-              <th>Trabajador</th>
-              <th class="num">Días</th>
-              <th class="num">Líneas</th>
-              <th class="num">Registrado</th>
-              <th class="num">Pendiente</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="cuerpo-pendientes">
-            <tr><td colspan="6" class="sin-datos">Cargando…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+  <div id="lista">
+    <div class="tarjeta"><div class="tarjeta-cuerpo sin-datos">Cargando planilla…</div></div>
   </div>
 
-  <div class="tarjeta">
+  <div class="tarjeta mt-4">
     <div class="tarjeta-cabecera">
       <div>
-        <h2>Historial de pagos</h2>
-        <p>Pagos registrados; puedes ver el comprobante o anular un pago.</p>
+        <h2>Ya pagado</h2>
+        <p>Pagos que ya entregaste. Puedes ver el comprobante o deshacer el pago.</p>
       </div>
     </div>
     <div class="tarjeta-cuerpo sin-padding">
@@ -134,14 +60,13 @@ import Icon from '../../components/Icon.astro';
             <tr>
               <th>Fecha de pago</th>
               <th>Trabajador</th>
-              <th>Rango pagado</th>
+              <th>Semana o periodo pagado</th>
               <th class="num">Monto</th>
-              <th>Notas</th>
               <th></th>
             </tr>
           </thead>
           <tbody id="cuerpo-pagos">
-            <tr><td colspan="6" class="sin-datos">Cargando…</td></tr>
+            <tr><td colspan="5" class="sin-datos">Cargando…</td></tr>
           </tbody>
         </table>
       </div>
@@ -150,221 +75,388 @@ import Icon from '../../components/Icon.astro';
 </Layout>
 
 <script>
-  import { listarTrabajadoresResumen, registrosPendientes, registrarPago, listarPagos, anularPago } from '../../lib/api.js';
-  import { soles, numero, fecha, hoyISO, inicioDeMes } from '../../lib/format.js';
+  import {
+    listarTrabajadores,
+    listarPagos,
+    registrarPago,
+    anularPago,
+    lineasDePago,
+    lineasDePagoHoras,
+    pendientesDelTaller,
+  } from '../../lib/api.js';
+  import { soles, numero, fecha, diaCorto, hoyISO, inicioSemana, finSemana, diaDePago, horasTexto, sumarDias } from '../../lib/format.js';
   import { qs, esc, toast, avisoError, confirmar, cargando } from '../../lib/ui.js';
+  import { abrirPlanilla, sumaImportes } from '../../lib/planilla-doc.js';
 
-  const elTrabajador = qs('#trabajador');
-  const elDesde = qs('#desde');
-  const elHasta = qs('#hasta');
-  const elFechaPago = qs('#fecha-pago');
-  const elNotas = qs('#notas');
-  const cuerpoPreview = qs('#cuerpo-preview');
-  const piePreview = qs('#pie-preview');
-  const totalPreview = qs('#total-preview');
-  const chipLineas = qs('#chip-lineas');
-  const botonRegistrar = qs('#registrar');
+  const lista = qs('#lista');
+  const sinPendientes = qs('#sin-pendientes');
+  const cuerpoPagos = qs('#cuerpo-pagos');
 
   const estado = {
     trabajadores: [],
-    pendientesDelTrabajador: [],
-    seleccion: [],
+    prendas: [],
+    horas: [],
     pagos: [],
+    abiertos: new Set(),
   };
 
-  // ------------------------------------------------------------- pendientes
+  const ICONO_PLANILLA =
+    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>';
 
-  const pendientes = () =>
-    estado.trabajadores
-      .filter((t) => Number(t.monto_pendiente) > 0)
-      .sort((a, b) => Number(b.monto_pendiente) - Number(a.monto_pendiente));
+  const ICONO_IMPRIMIR =
+    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>';
 
-  function pintarPendientes() {
-    const lista = pendientes();
-    const cuerpo = qs('#cuerpo-pendientes');
+  const documentoDe = (trabajadorId) =>
+    estado.trabajadores.find((t) => t.id === trabajadorId)?.documento ?? null;
 
-    cuerpo.innerHTML = lista.length
-      ? lista
-          .map(
-            (t) => `
-        <tr>
-          <td class="negrita">${esc(t.nombre)}</td>
-          <td class="num">${esc(numero(t.dias_trabajados))}</td>
-          <td class="num">${esc(numero(t.lineas))}</td>
-          <td class="num">${esc(soles(t.monto_total))}</td>
-          <td class="num negrita">${esc(soles(t.monto_pendiente))}</td>
-          <td class="acciones-fila">
-            <button type="button" class="boton pequeno" data-liquidar="${esc(t.id)}">Liquidar</button>
-          </td>
-        </tr>`
-          )
-          .join('')
-      : '<tr><td colspan="6" class="sin-datos">No hay montos pendientes de pago.</td></tr>';
+  /** Abre el documento con el detalle del trabajo (prendas + horas). */
+  function verPlanilla({ titulo, trabajador, documento, prendas, horas, etiquetaTotal, etiquetaArchivo, notas }) {
+    abrirPlanilla({
+      titulo,
+      subtitulo: 'Detalle del trabajo realizado',
+      trabajador,
+      documento,
+      prendas,
+      horas,
+      etiquetaTotal: etiquetaTotal ?? 'Total a pagar',
+      notas: notas ?? null,
+      etiquetaArchivo: etiquetaArchivo ?? 'planilla',
+    });
+  }
 
-    cuerpo.querySelectorAll('[data-liquidar]').forEach((boton) => {
+  // ------------------------------------------------------------ agrupación
+
+  /** Agrupa el trabajo pendiente por trabajador (prendas + horas). */
+  function porTrabajador() {
+    const mapa = new Map();
+
+    const asegurar = (id, nombre) => {
+      if (!mapa.has(id)) mapa.set(id, { id, nombre, prendas: [], horas: [] });
+      return mapa.get(id);
+    };
+
+    estado.prendas.forEach((r) => asegurar(r.trabajador_id, r.trabajador).prendas.push(r));
+    estado.horas.forEach((h) => asegurar(h.trabajador_id, h.trabajador).horas.push(h));
+
+    return [...mapa.values()]
+      .map((grupo) => ({
+        ...grupo,
+        total: sumaImportes(grupo.prendas) + sumaImportes(grupo.horas),
+        dias: new Set([...grupo.prendas.map((r) => r.fecha), ...grupo.horas.map((h) => h.fecha)]).size,
+      }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+
+  /** Semanas pendientes de un trabajador, de la más antigua a la más nueva. */
+  function semanasDe(grupo) {
+    const semanas = new Map();
+
+    const asegurar = (fechaTrabajo) => {
+      const semana = inicioSemana(fechaTrabajo);
+      if (!semanas.has(semana)) semanas.set(semana, { semana, prendas: [], horas: [] });
+      return semanas.get(semana);
+    };
+
+    grupo.prendas.forEach((r) => asegurar(r.fecha).prendas.push(r));
+    grupo.horas.forEach((h) => asegurar(h.fecha).horas.push(h));
+
+    return [...semanas.values()]
+      .map((s) => ({
+        ...s,
+        totalPrendas: sumaImportes(s.prendas),
+        totalHoras: sumaImportes(s.horas),
+        total: sumaImportes(s.prendas) + sumaImportes(s.horas),
+      }))
+      .sort((a, b) => a.semana.localeCompare(b.semana));
+  }
+
+  /** Totales por día dentro de una semana. */
+  function diasDe(semana) {
+    const dias = new Map();
+
+    const asegurar = (fechaTrabajo) => {
+      if (!dias.has(fechaTrabajo)) dias.set(fechaTrabajo, { fecha: fechaTrabajo, prendas: 0, horas: 0, minutos: 0 });
+      return dias.get(fechaTrabajo);
+    };
+
+    semana.prendas.forEach((r) => {
+      asegurar(r.fecha).prendas += Number(r.subtotal);
+    });
+    semana.horas.forEach((h) => {
+      const dia = asegurar(h.fecha);
+      dia.horas += Number(h.subtotal);
+      dia.minutos += Number(h.minutos);
+    });
+
+    return [...dias.values()].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }
+
+  // -------------------------------------------------------------- plantillas
+
+  function bloqueSemana(grupo, semana) {
+    const dias = diasDe(semana);
+    const etiqueta = `${esc(grupo.id)}|${esc(semana.semana)}`;
+
+    return `
+      <div class="bloque">
+        <div class="bloque-cabecera">
+          <span>
+            Semana del sábado ${esc(fecha(semana.semana))} al viernes ${esc(fecha(finSemana(semana.semana)))}
+            <div class="pista">Se paga el sábado ${esc(fecha(diaDePago(semana.semana)))}</div>
+          </span>
+          <span class="fila">
+            <span class="negrita">${esc(soles(semana.total))}</span>
+            <button type="button" class="boton secundario pequeno" data-ver-semana="${etiqueta}">
+              ${ICONO_PLANILLA} Ver
+            </button>
+            <button type="button" class="boton pequeno" data-pagar-semana="${etiqueta}">
+              Pagar esta semana
+            </button>
+          </span>
+        </div>
+        <div class="tabla-envoltura">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Día</th>
+                <th class="num">Prendas</th>
+                <th class="num">Horas</th>
+                <th class="num">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${dias
+                .map(
+                  (dia) => `
+                <tr>
+                  <td>${esc(diaCorto(dia.fecha))}${dia.minutos ? ` <span class="texto-suave texto-pequeno">(${esc(horasTexto(dia.minutos))})</span>` : ''}</td>
+                  <td class="num ${dia.prendas ? '' : 'texto-suave'}">${dia.prendas ? esc(soles(dia.prendas)) : '—'}</td>
+                  <td class="num ${dia.horas ? '' : 'texto-suave'}">${dia.horas ? esc(soles(dia.horas)) : '—'}</td>
+                  <td class="num negrita">${esc(soles(dia.prendas + dia.horas))}</td>
+                </tr>`
+                )
+                .join('')}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td>Total de la semana</td>
+                <td class="num">${esc(soles(semana.totalPrendas))}</td>
+                <td class="num">${esc(soles(semana.totalHoras))}</td>
+                <td class="num">${esc(soles(semana.total))}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  function tarjetaTrabajador(grupo) {
+    const id = esc(grupo.id);
+    const abierto = estado.abiertos.has(grupo.id);
+    const semanas = semanasDe(grupo);
+
+    return `
+      <div class="tarjeta">
+        <div class="tarjeta-cuerpo">
+          <div class="encabezado-partida">
+            <div>
+              <h2 style="font-size:19px">${esc(grupo.nombre)}</h2>
+              <p class="texto-suave texto-pequeno">
+                ${esc(numero(grupo.dias))} día(s) trabajado(s) · ${esc(numero(semanas.length))} semana(s) por pagar
+              </p>
+            </div>
+            <div class="fila">
+              <div style="text-align:right">
+                <div class="etiqueta-dato">Se le debe</div>
+                <div class="negrita" style="font-size:23px;line-height:1.15">${esc(soles(grupo.total))}</div>
+              </div>
+              <button type="button" class="boton secundario" data-ver="${id}">
+                ${abierto ? 'Ocultar semanas' : 'Ver semanas'}
+              </button>
+              <button type="button" class="boton secundario" data-planilla="${id}">
+                ${ICONO_PLANILLA} Planilla
+              </button>
+              <button type="button" class="boton" data-pagar="${id}">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
+                Pagar todo
+              </button>
+            </div>
+          </div>
+
+          <div class="${abierto ? 'pasos-lista mt-4' : 'hidden'}" data-detalle="${id}">
+            ${semanas.map((semana) => bloqueSemana(grupo, semana)).join('')}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ------------------------------------------------------------------ pintar
+
+  function pintar() {
+    const grupos = porTrabajador();
+    const totalPendiente = sumaImportes(estado.prendas) + sumaImportes(estado.horas);
+
+    qs('#kpi-total').textContent = soles(totalPendiente);
+    qs('#kpi-personas').textContent = numero(grupos.length);
+    qs('#kpi-pagado').textContent = soles(estado.pagos.reduce((s, p) => s + Number(p.monto), 0));
+    qs('#kpi-pagos').textContent = `${numero(estado.pagos.length)} pago(s) realizados`;
+
+    if (grupos.length === 0) {
+      lista.innerHTML = '';
+      lista.classList.add('hidden');
+      sinPendientes.classList.remove('hidden');
+    } else {
+      sinPendientes.classList.add('hidden');
+      lista.classList.remove('hidden');
+      lista.innerHTML = grupos.map(tarjetaTrabajador).join('');
+      conectarTarjetas(grupos);
+    }
+
+    pintarPagos();
+  }
+
+  function conectarTarjetas(grupos) {
+    const buscarGrupo = (id) => grupos.find((g) => g.id === id);
+    const buscarSemana = (grupo, semana) => semanasDe(grupo).find((s) => s.semana === semana);
+
+    lista.querySelectorAll('[data-ver]').forEach((boton) => {
       boton.addEventListener('click', () => {
-        elTrabajador.value = boton.dataset.liquidar;
-        alCambiarTrabajador({ rangoCompleto: true });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const id = boton.dataset.ver;
+        if (estado.abiertos.has(id)) estado.abiertos.delete(id);
+        else estado.abiertos.add(id);
+        pintar();
+      });
+    });
+
+    lista.querySelectorAll('[data-planilla]').forEach((boton) => {
+      boton.addEventListener('click', () => {
+        const grupo = buscarGrupo(boton.dataset.planilla);
+        verPlanilla({
+          titulo: `Planilla de ${grupo.nombre}`,
+          trabajador: grupo.nombre,
+          documento: documentoDe(grupo.id),
+          prendas: grupo.prendas,
+          horas: grupo.horas,
+        });
+      });
+    });
+
+    lista.querySelectorAll('[data-ver-semana]').forEach((boton) => {
+      boton.addEventListener('click', () => {
+        const [id, semana] = boton.dataset.verSemana.split('|');
+        const grupo = buscarGrupo(id);
+        const datos = buscarSemana(grupo, semana);
+        verPlanilla({
+          titulo: `Planilla de ${grupo.nombre}`,
+          trabajador: grupo.nombre,
+          documento: documentoDe(grupo.id),
+          prendas: datos.prendas,
+          horas: datos.horas,
+        });
+      });
+    });
+
+    lista.querySelectorAll('[data-pagar-semana]').forEach((boton) => {
+      boton.addEventListener('click', () => {
+        const [id, semana] = boton.dataset.pagarSemana.split('|');
+        const grupo = buscarGrupo(id);
+        const datos = buscarSemana(grupo, semana);
+
+        ejecutarPago({
+          grupo,
+          desde: semana,
+          hasta: sumarDias(semana, 6),
+          total: datos.total,
+          descripcion: `la semana del sábado ${fecha(semana)} al viernes ${fecha(sumarDias(semana, 6))}`,
+          boton,
+        });
+      });
+    });
+
+    lista.querySelectorAll('[data-pagar]').forEach((boton) => {
+      boton.addEventListener('click', () => {
+        const grupo = buscarGrupo(boton.dataset.pagar);
+        const semanas = semanasDe(grupo);
+        ejecutarPago({
+          grupo,
+          desde: semanas[0].semana,
+          hasta: sumarDias(semanas[semanas.length - 1].semana, 6),
+          total: grupo.total,
+          descripcion: `${numero(semanas.length)} semana(s) de trabajo`,
+          boton,
+        });
       });
     });
   }
-
-  function pintarKpis() {
-    const totalPendiente = estado.trabajadores.reduce((s, t) => s + Number(t.monto_pendiente), 0);
-    const totalPagado = estado.pagos.reduce((s, p) => s + Number(p.monto), 0);
-    qs('#kpi-pendiente').textContent = soles(totalPendiente);
-    qs('#kpi-pagado').textContent = soles(totalPagado);
-    qs('#kpi-pagos').textContent = `${numero(estado.pagos.length)} pago(s) registrados`;
-  }
-
-  // ---------------------------------------------------------------- preview
-
-  function calcularSeleccion() {
-    const desde = elDesde.value;
-    const hasta = elHasta.value;
-    const filtradas = estado.pendientesDelTrabajador.filter(
-      (r) => (!desde || r.fecha >= desde) && (!hasta || r.fecha <= hasta)
-    );
-    estado.seleccion = filtradas;
-    return filtradas;
-  }
-
-  function pintarPreview() {
-    const seleccion = calcularSeleccion();
-
-    if (seleccion.length === 0) {
-      cuerpoPreview.innerHTML = '<tr><td colspan="6" class="sin-datos">No hay trabajo pendiente en ese rango de fechas.</td></tr>';
-      piePreview.classList.add('oculto');
-      chipLineas.textContent = '0 líneas';
-      totalPreview.textContent = soles(0);
-      qs('#pista-pago').textContent = '';
-      return;
-    }
-
-    cuerpoPreview.innerHTML = seleccion
-      .map(
-        (r) => `
-        <tr>
-          <td>${esc(fecha(r.fecha))}</td>
-          <td>${esc(r.partida_codigo)}</td>
-          <td>${esc(r.paquete_numero)} · ${esc(r.paquete_talla)}</td>
-          <td>${esc(r.operacion)}</td>
-          <td class="num">${esc(numero(r.cantidad))}</td>
-          <td class="num negrita">${esc(soles(r.subtotal))}</td>
-        </tr>`
-      )
-      .join('');
-
-    const total = seleccion.reduce((s, r) => s + Number(r.subtotal), 0);
-    const dias = new Set(seleccion.map((r) => r.fecha)).size;
-    totalPreview.textContent = soles(total);
-    piePreview.classList.remove('oculto');
-    chipLineas.textContent = `${numero(seleccion.length)} líneas · ${numero(dias)} día(s)`;
-
-    const trabajador = estado.trabajadores.find((t) => t.id === elTrabajador.value);
-    qs('#pista-pago').textContent = `${trabajador?.nombre ?? ''} · de ${fecha(elDesde.value)} a ${fecha(elHasta.value)} · ${soles(total)}`;
-  }
-
-  async function alCambiarTrabajador({ rangoCompleto = false } = {}) {
-    const trabajadorId = elTrabajador.value;
-    if (!trabajadorId) {
-      estado.pendientesDelTrabajador = [];
-      cuerpoPreview.innerHTML = '<tr><td colspan="6" class="sin-datos">Elige trabajador y rango de fechas.</td></tr>';
-      piePreview.classList.add('oculto');
-      chipLineas.textContent = '0 líneas';
-      return;
-    }
-
-    cuerpoPreview.innerHTML = '<tr><td colspan="6" class="sin-datos">Cargando…</td></tr>';
-    estado.pendientesDelTrabajador = await registrosPendientes(trabajadorId);
-
-    if (rangoCompleto && estado.pendientesDelTrabajador.length > 0) {
-      elDesde.value = estado.pendientesDelTrabajador[0].fecha;
-      elHasta.value = hoyISO();
-    }
-
-    pintarPreview();
-  }
-
-  // ---------------------------------------------------------------- liquidar
-
-  async function liquidar() {
-    if (!elTrabajador.value) return toast('Elige al trabajador.', 'aviso');
-    if (!elDesde.value || !elHasta.value) return toast('Define el rango de fechas.', 'aviso');
-    if (estado.seleccion.length === 0) return toast('No hay trabajo pendiente en ese rango.', 'aviso');
-
-    const total = estado.seleccion.reduce((s, r) => s + Number(r.subtotal), 0);
-    const trabajador = estado.trabajadores.find((t) => t.id === elTrabajador.value);
-
-    const ok = await confirmar({
-      titulo: 'Registrar pago',
-      mensaje: `Se pagará ${soles(total)} a ${trabajador?.nombre ?? ''} por el trabajo del ${fecha(elDesde.value)} al ${fecha(elHasta.value)} (${estado.seleccion.length} líneas).`,
-      textoAceptar: 'Registrar pago',
-    });
-    if (!ok) return;
-
-    try {
-      cargando(botonRegistrar, true, 'Registrando…');
-      const pagoId = await registrarPago({
-        trabajadorId: elTrabajador.value,
-        desde: elDesde.value,
-        hasta: elHasta.value,
-        fechaPago: elFechaPago.value || hoyISO(),
-        notas: elNotas.value || null,
-      });
-
-      toast('Pago registrado correctamente.', 'exito');
-      elNotas.value = '';
-      window.open(`/pagos/comprobante?id=${pagoId}`, '_blank');
-      await cargar();
-    } catch (error) {
-      avisoError(error);
-    } finally {
-      cargando(botonRegistrar, false);
-    }
-  }
-
-  // --------------------------------------------------------------- historial
 
   function pintarPagos() {
-    const cuerpo = qs('#cuerpo-pagos');
-
-    cuerpo.innerHTML = estado.pagos.length
+    cuerpoPagos.innerHTML = estado.pagos.length
       ? estado.pagos
           .map(
             (p) => `
         <tr>
           <td>${esc(fecha(p.fecha_pago))}</td>
           <td class="negrita">${esc(p.trabajadores?.nombre ?? '—')}</td>
-          <td>${esc(fecha(p.fecha_inicio))} → ${esc(fecha(p.fecha_fin))}</td>
+          <td class="texto-suave">
+            ${
+              p.semana
+                ? `Semana del sábado ${esc(fecha(p.semana))} al viernes ${esc(fecha(sumarDias(p.semana, 6)))}`
+                : `Del ${esc(fecha(p.fecha_inicio))} al ${esc(fecha(p.fecha_fin))}`
+            }
+          </td>
           <td class="num negrita">${esc(soles(p.monto))}</td>
-          <td class="texto-suave">${esc(p.notas ?? '')}</td>
           <td class="acciones-fila">
-            <a class="boton icono" href="/pagos/comprobante?id=${esc(p.id)}" target="_blank" title="Ver comprobante">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-            </a>
-            <button type="button" class="boton icono peligro" data-anular="${esc(p.id)}" title="Anular pago">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/></svg>
+            <button type="button" class="boton icono" data-comprobante="${esc(p.id)}" title="Ver o descargar el comprobante">
+              ${ICONO_IMPRIMIR}
+            </button>
+            <button type="button" class="boton icono peligro" data-anular="${esc(p.id)}" title="Deshacer el pago">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </td>
         </tr>`
           )
           .join('')
-      : '<tr><td colspan="6" class="sin-datos">Todavía no se registran pagos.</td></tr>';
+      : '<tr><td colspan="5" class="sin-datos">Todavía no registras ningún pago.</td></tr>';
 
-    cuerpo.querySelectorAll('[data-anular]').forEach((boton) => {
+    cuerpoPagos.querySelectorAll('[data-comprobante]').forEach((boton) => {
+      boton.addEventListener('click', async () => {
+        const pago = estado.pagos.find((p) => p.id === boton.dataset.comprobante);
+        if (!pago) return;
+
+        try {
+          cargando(boton, true, '…');
+          const [prendas, horas] = await Promise.all([lineasDePago(pago.id), lineasDePagoHoras(pago.id)]);
+
+          verPlanilla({
+            titulo: `Comprobante de ${pago.trabajadores?.nombre ?? ''}`,
+            trabajador: pago.trabajadores?.nombre ?? '',
+            documento: pago.trabajadores?.documento ?? documentoDe(pago.trabajador_id),
+            prendas,
+            horas,
+            etiquetaTotal: 'Monto pagado',
+            etiquetaArchivo: 'comprobante',
+            notas: pago.notas,
+          });
+        } catch (error) {
+          avisoError(error);
+        } finally {
+          cargando(boton, false);
+        }
+      });
+    });
+
+    cuerpoPagos.querySelectorAll('[data-anular]').forEach((boton) => {
       boton.addEventListener('click', async () => {
         const ok = await confirmar({
-          titulo: 'Anular pago',
-          mensaje: 'El pago se eliminará y sus líneas volverán a quedar pendientes de pago.',
-          textoAceptar: 'Anular pago',
+          titulo: 'Deshacer el pago',
+          mensaje: 'El pago se borrará y ese trabajo volverá a aparecer como pendiente.',
+          textoAceptar: 'Deshacer pago',
           peligro: true,
         });
         if (!ok) return;
         try {
           await anularPago(boton.dataset.anular);
-          toast('Pago anulado.', 'exito');
+          toast('Pago deshecho.', 'exito');
           await cargar();
         } catch (error) {
           avisoError(error);
@@ -373,62 +465,61 @@ import Icon from '../../components/Icon.astro';
     });
   }
 
+  // ------------------------------------------------------------------ pagar
+
+  async function ejecutarPago({ grupo, desde, hasta, total, descripcion, boton }) {
+    const ok = await confirmar({
+      titulo: `Pagar a ${grupo.nombre}`,
+      mensaje: `Se pagarán ${soles(total)} por ${descripcion}.\n\n¿Confirmas que ya le entregaste el dinero?`,
+      textoAceptar: 'Sí, ya le pagué',
+    });
+    if (!ok) return;
+
+    try {
+      cargando(boton, true, 'Guardando…');
+      await registrarPago({
+        trabajadorId: grupo.id,
+        desde,
+        hasta,
+        fechaPago: hoyISO(),
+        notas: null,
+      });
+      toast(`Pago de ${soles(total)} registrado.`, 'exito', 6000);
+      await cargar();
+    } catch (error) {
+      avisoError(error);
+    } finally {
+      cargando(boton, false);
+    }
+  }
+
   // ------------------------------------------------------------------ carga
 
   async function cargar() {
-    const [trabajadores, pagos] = await Promise.all([listarTrabajadoresResumen(), listarPagos({})]);
-    estado.trabajadores = trabajadores;
+    const [{ prendas, horas }, pagos, trabajadores] = await Promise.all([
+      pendientesDelTaller(),
+      listarPagos({}),
+      listarTrabajadores(),
+    ]);
+
+    estado.prendas = prendas;
+    estado.horas = horas;
     estado.pagos = pagos;
-
-    const valorPrevio = elTrabajador.value;
-    elTrabajador.innerHTML =
-      '<option value="">Elige al trabajador</option>' +
-      trabajadores
-        .filter((t) => t.activo || Number(t.monto_pendiente) > 0)
-        .map((t) => `<option value="${esc(t.id)}">${esc(t.nombre)}</option>`)
-        .join('');
-    if (valorPrevio && trabajadores.some((t) => t.id === valorPrevio)) elTrabajador.value = valorPrevio;
-
-    pintarKpis();
-    pintarPendientes();
-    pintarPagos();
-
-    if (elTrabajador.value) await alCambiarTrabajador();
+    estado.trabajadores = trabajadores;
+    pintar();
   }
 
-  // ------------------------------------------------------------------- init
-
-  elTrabajador.addEventListener('change', () => alCambiarTrabajador({ rangoCompleto: true }));
-  elDesde.addEventListener('change', pintarPreview);
-  elHasta.addEventListener('change', pintarPreview);
-  botonRegistrar.addEventListener('click', liquidar);
-
-  qs('#rango-completo').addEventListener('click', async () => {
-    if (estado.pendientesDelTrabajador.length === 0) return toast('Primero elige un trabajador con pendientes.', 'aviso');
-    elDesde.value = estado.pendientesDelTrabajador[0].fecha;
-    elHasta.value = hoyISO();
-    pintarPreview();
-  });
-
-  qs('#rango-mes').addEventListener('click', () => {
-    elDesde.value = inicioDeMes();
-    elHasta.value = hoyISO();
-    pintarPreview();
-  });
-
   (async () => {
-    elDesde.value = inicioDeMes();
-    elHasta.value = hoyISO();
-    elFechaPago.value = hoyISO();
-
-    const params = new URLSearchParams(location.search);
     await cargar();
-    if (params.get('trabajador')) {
-      elTrabajador.value = params.get('trabajador');
-      await alCambiarTrabajador({ rangoCompleto: true });
+
+    const param = new URLSearchParams(location.search).get('trabajador');
+    if (param) {
+      estado.abiertos.add(param);
+      pintar();
+      lista.querySelector('[data-detalle]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   })().catch((error) => {
     avisoError(error);
-    qs('#cuerpo-pendientes').innerHTML = `<tr><td colspan="6" class="sin-datos">${esc(error.message)}</td></tr>`;
+    lista.innerHTML = `<div class="tarjeta"><div class="tarjeta-cuerpo sin-datos">${esc(error.message)}</div></div>`;
   });
 </script>

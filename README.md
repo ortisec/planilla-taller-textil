@@ -7,24 +7,50 @@ precios**, se anotan los **paquetes** (talla + cantidad de prendas) y luego el
 debe pagar. Finalmente se **liquidan pagos por rango de fechas**.
 
 - **Frontend:** Astro (sitio estático) — ideal para desplegar en Vercel.
-- **Estilos:** Tailwind CSS v4 (tema y sistema de diseño en `src/styles/global.css`).
+- **Estilos:** Tailwind CSS v4 (tema y capas `base`/`components` en `src/styles/global.css`).
+- **PDF e imagen:** `html-to-image` + `jsPDF`, cargados solo al descargar.
 - **Backend:** Supabase (Postgres + API REST autogenerada + RLS).
 
 ---
 
 ## 1. Cómo funciona el cálculo
 
+El taller tiene **dos formas de trabajo**:
+
+| Forma | Cómo se paga |
+| --- | --- |
+| **Por prendas** | por operación hecha en un paquete |
+| **Manual (por horas)** | por hora trabajada, en turnos (ej. 8:00–12:00 y 14:00–19:00) |
+
 | Concepto | Fórmula |
 | --- | --- |
 | **Precio de la prenda** | suma de los precios de las operaciones de la partida |
 | **Total de un paquete** | precio de la prenda × cantidad de prendas del paquete |
 | **Total de la partida** | precio de la prenda × total de prendas de la partida |
-| **Pago por línea de trabajo** | precio de la operación × cantidad de prendas hechas |
+| **Pago por prendas** | precio de la operación × cantidad de prendas hechas |
+| **Pago por horas** | (minutos trabajados ÷ 60) × pago por hora |
 
-Ejemplo: la partida **123** tiene 24 paquetes y las operaciones *Unir Hombros*
-(S/ 0.10), *Cerrar Costados* (S/ 0.12), etc. Si **JOSE ORTIZ** hizo *Unir
-Hombros* en el **paquete 3 (talla M, 18 prendas)**, su pago es
+Ejemplo por prendas: la partida **123** tiene 24 paquetes y las operaciones *Unir
+Hombros* (S/ 0.10), *Cerrar Costados* (S/ 0.12), etc. Si **JOSE ORTIZ** hizo
+*Unir Hombros* en el **paquete 3 (talla M, 18 prendas)**, su pago es
 `18 × 0.10 = S/ 1.80`.
+
+Ejemplo por horas: **JOSE ORTIZ** trabajó de 8:00 a 12:00 (4 h) y de 14:00 a
+19:00 (5 h) con pago de **S/ 7.00 por hora** → `9 h × 7 = S/ 63.00` ese día.
+
+### La semana del taller
+
+La semana va de **sábado a viernes** y se paga el **sábado siguiente**:
+
+```
+   sábado 10/10 .................................. viernes 16/10   ->  se paga el sábado 17/10
+   sábado 17/10 .................................. viernes 23/10   ->  se paga el sábado 24/10
+```
+
+En la **Planilla** el trabajo pendiente se agrupa por semana, indicando el rango y
+la fecha de pago, y se puede pagar una semana concreta o todo lo pendiente. El
+**Tablero** muestra un **histograma** de las últimas 6 semanas: dos barras por
+semana (verde = ya pagado, ámbar = falta pagar) con su escala en soles.
 
 ### Reglas de control
 
@@ -35,6 +61,8 @@ Hombros* en el **paquete 3 (talla M, 18 prendas)**, su pago es
 - **El registro diario descuenta lo hecho.** La columna *Falta* y los campos de
   cantidad muestran las prendas pendientes de ese paquete/operación, no el total
   del paquete, y se indica qué trabajador ya hizo cada operación.
+- **Las horas se piden con hora de inicio y de fin.** El sistema calcula los
+  minutos y el importe; si el turno ya estaba anotado, avisa antes de duplicarlo.
 
 ---
 
@@ -52,7 +80,8 @@ contenido de cada archivo:
 
 1. `supabase/migrations/20261014120000_init.sql` → tablas, vistas, funciones y políticas.
 2. `supabase/migrations/20261015120000_avance_paquete.sql` → control de avance por paquete.
-3. `supabase/seed.sql` → catálogo de operaciones, personal y partida de ejemplo (opcional).
+3. `supabase/migrations/20261018120000_trabajo_horas.sql` → trabajo por horas y semanas.
+4. `supabase/seed.sql` → catálogo de operaciones, personal y partida de ejemplo (opcional).
 
 > Recuerda pegar el **contenido** del archivo, no la ruta. El SQL Editor no lee
 > archivos del repositorio.
@@ -118,8 +147,9 @@ planilla-taller-textil/
 │   ├── layouts/
 │   │   └── Layout.astro          # navegación y estructura general
 │   ├── pages/
-│   │   ├── index.astro           # tablero con indicadores
-│   │   ├── trabajo.astro         # registro diario de trabajo
+│   │   ├── index.astro           # tablero con indicadores y gráfico semanal
+│   │   ├── trabajo.astro         # registro diario por prendas
+│   │   ├── horas.astro           # registro de turnos de trabajo manual
 │   │   ├── registros.astro       # consulta y exportación de registros
 │   │   ├── personal.astro        # trabajadores
 │   │   ├── operaciones.astro     # catálogo de operaciones
@@ -127,19 +157,20 @@ planilla-taller-textil/
 │   │   │   ├── index.astro       # listado y creación de partidas
 │   │   │   └── detalle.astro     # operaciones, paquetes y trabajo de la partida
 │   │   └── pagos/
-│   │       ├── index.astro       # liquidación e historial de pagos
-│   │       └── comprobante.astro # comprobante imprimible
+│   │       └── index.astro       # planilla: deuda por trabajador y detalle por día
 │   ├── lib/
 │   │   ├── supabase.js           # cliente de Supabase
 │   │   ├── api.js                # acceso a datos
 │   │   ├── format.js             # moneda, fechas y números
+│   │   ├── planilla-doc.js       # documento de planilla + modal y descargas
 │   │   └── ui.js                 # avisos, confirmaciones y utilidades
 │   └── styles/
-│       └── global.css            # Tailwind v4: tema + sistema de diseño
+│       └── global.css            # Tailwind v4: tema + capas base/components
 ├── supabase/
 │   ├── migrations/
 │   │   ├── 20261014120000_init.sql
-│   │   └── 20261015120000_avance_paquete.sql
+│   │   ├── 20261015120000_avance_paquete.sql
+│   │   └── 20261018120000_trabajo_horas.sql
 │   ├── config.toml
 │   ├── seed.sql
 │   └── verificar.sql
@@ -158,12 +189,25 @@ planilla-taller-textil/
 2. **Personal** (`/personal`): registra a los trabajadores.
 3. **Partidas** (`/partidas`): crea la partida; marca las operaciones (ajustando el precio
    si hace falta) y genera los paquetes con su talla y cantidad.
-4. **Registro diario** (`/trabajo`): elige fecha, trabajador, partida y paquete. La tabla
-   muestra, por operación, cuánto se hizo y cuánto **falta**; las cantidades llegan
-   precargadas con lo pendiente y se pueden ajustar (trabajo parcial). Si intentas
-   registrar más de lo que falta, el sistema pide confirmación.
-5. **Pagos** (`/pagos`): elige trabajador y rango de fechas, revisa la vista previa y
-   registra el pago. Se genera un comprobante imprimible.
+4. **Registro diario** (`/trabajo`): elige el día, la partida, el paquete y quién trabajó.
+   Aparece la lista de operaciones y cada una indica cuántas prendas **faltan** y quién las
+   hizo ya. Las cantidades llegan puestas con lo que falta: si el paquete se hizo completo
+   solo pulsas **Guardar**; si hizo menos, cambias el número. Abajo se ve el **total a pagar**.
+   Si anotas más prendas de las que faltan, el sistema avisa antes de guardar.
+5. **Trabajo por horas** (`/horas`): para el trabajo manual. Elige a la persona, el día, y
+   desde qué hora hasta qué hora trabajó (hay botones rápidos para *Mañana 8:00–12:00* y
+   *Tarde 2:00–7:00*). El pago por hora viene sugerido desde el Personal y se puede cambiar.
+   Abajo te dice a qué semana pertenece el día y cuándo se paga.
+6. **Planilla** (`/pagos`): muestra el **total que se le debe a cada trabajador**, agrupado
+   **por semana** (con el rango de sábado a viernes y la fecha de pago). Cada semana se puede
+   pagar por separado, o todo lo pendiente.
+   El botón **Planilla** abre, sin salir de la página, un **modal** con el documento ordenado
+   de lo que hizo (prendas y horas) y lo que se le paga, listo para **descargar en PDF**,
+   **descargar como imagen (PNG)** o **imprimir**. Lo mismo desde *Ya pagado* para los pagos
+   ya entregados.
+7. **Tablero** (`/`): además de los indicadores, muestra un **histograma de las últimas 6
+   semanas**: dos barras por semana (verde = ya pagado, ámbar = falta pagar), con la escala
+   en soles y el total de cada semana encima de sus barras.
 
 ---
 
@@ -176,14 +220,16 @@ planilla-taller-textil/
 | `partidas` | Número de partida (lote de un pedido). |
 | `partida_operaciones` | Copia editable de las operaciones y precios de la partida. |
 | `partida_paquetes` | Paquetes de la partida (número, talla, cantidad). |
-| `registros_trabajo` | Trabajo hecho: trabajador + partida + paquete + operación + cantidad. |
-| `pagos` | Pago liquidado a un trabajador en un rango de fechas. |
+| `registros_trabajo` | Trabajo por prendas: trabajador + partida + paquete + operación + cantidad. |
+| `registros_horas` | Trabajo manual: trabajador + día + hora de inicio y fin + pago por hora. |
+| `pagos` | Pago liquidado a un trabajador en un rango de fechas (y su semana, si aplica). |
 
 Vistas: `v_partida_resumen`, `v_paquete_resumen`, `v_paquete_operacion_avance`,
-`v_registros_detalle`, `v_trabajador_resumen`, `v_operacion_uso`.
+`v_registros_detalle`, `v_horas_detalle`, `v_trabajador_resumen`, `v_semana_resumen`,
+`v_operacion_uso`.
 
-Funciones: `fn_crear_partida`, `fn_registrar_trabajo`, `fn_registrar_pago`,
-`fn_anular_pago`.
+Funciones: `fn_crear_partida`, `fn_registrar_trabajo`, `fn_registrar_horas`,
+`fn_registrar_pago`, `fn_anular_pago`, `fn_sabado_semana`.
 
 ---
 
@@ -211,7 +257,13 @@ Antes de usarla con información real:
 
 - **Moneda:** soles peruanos (`S/`), dos decimales en totales y hasta cuatro en precios unitarios.
 - **Fechas:** se guardan como fecha local (`YYYY-MM-DD`), sin desfase por zona horaria.
+- **Semanas:** la semana del taller va de **sábado a viernes** (`fn_sabado_semana`), y se paga
+  el sábado siguiente. Si el rango pagado coincide exactamente con una semana, el pago queda
+  etiquetado con esa semana.
 - **Cantidades parciales:** en el registro diario puedes reducir la cantidad de una
   operación si el trabajo quedó incompleto.
-- **Impresión:** los comprobantes de pago y el detalle de partida tienen estilos de impresión.
+- **Entrega de la planilla:** el documento del trabajador (lo que hizo + lo que se le paga)
+  se abre en un modal y se puede descargar en **PDF** o **PNG**, o imprimir. El PDF se arma
+  en A4 y, si es largo, reparte el contenido en varias páginas cortando al final de cada día.
+- **Impresión:** el detalle de partida también tiene estilos de impresión.
 - **Exportación:** el listado de registros se puede descargar en CSV.

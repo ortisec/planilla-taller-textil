@@ -56,6 +56,28 @@ export function fechaLarga(valor) {
   return `${d} de ${MESES[m - 1]} de ${a}`;
 }
 
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+/** '2026-10-14' -> 'miércoles 14 de octubre de 2026' */
+export function fechaConDia(valor) {
+  if (!valor) return '—';
+  const iso = String(valor).slice(0, 10);
+  const [a, m, d] = iso.split('-').map(Number);
+  if (!a || !m || !d) return String(valor);
+  const dia = DIAS[new Date(a, m - 1, d).getDay()];
+  return `${dia} ${d} de ${MESES[m - 1]} de ${a}`;
+}
+
+/** '2026-10-14' -> 'mié 14 oct' */
+export function diaCorto(valor) {
+  if (!valor) return '—';
+  const iso = String(valor).slice(0, 10);
+  const [a, m, d] = iso.split('-').map(Number);
+  if (!a || !m || !d) return String(valor);
+  const dia = DIAS[new Date(a, m - 1, d).getDay()];
+  return `${dia.slice(0, 3)} ${d} ${MESES[m - 1].slice(0, 3)}`;
+}
+
 /** Fecha de hoy en formato ISO local (YYYY-MM-DD), sin desfase UTC. */
 export function hoyISO(base = new Date()) {
   const local = new Date(base.getTime() - base.getTimezoneOffset() * 60000);
@@ -93,4 +115,72 @@ export function claseEstadoPartida(estado) {
     anulada: 'peligro',
   };
   return mapa[estado] ?? '';
+}
+
+/* --------------------------------------------------------------- horas */
+
+/** '14:30:00' -> '2:30 pm' */
+export function hora12(valor) {
+  if (!valor) return '—';
+  const [h, m] = String(valor).split(':').map(Number);
+  if (Number.isNaN(h)) return String(valor);
+  const sufijo = h < 12 ? 'am' : 'pm';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m ?? 0).padStart(2, '0')} ${sufijo}`;
+}
+
+/** 270 -> '4 h 30 min' */
+export function horasTexto(minutos) {
+  const total = Number(minutos) || 0;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h} h`;
+  return `${h} h ${m} min`;
+}
+
+/** '08:00' -> minutos desde medianoche (para calcular la duración). */
+export function minutosDeHora(valor) {
+  if (!valor) return 0;
+  const [h, m] = String(valor).split(':').map(Number);
+  return (Number(h) || 0) * 60 + (Number(m) || 0);
+}
+
+/* ------------------------------------------------------- semana del taller */
+
+/**
+ * La semana del taller va de sábado a viernes y se paga el sábado siguiente.
+ * Devuelve el sábado que inicia la semana a la que pertenece la fecha.
+ */
+export function inicioSemana(valor) {
+  const iso = String(valor).slice(0, 10);
+  const [a, m, d] = iso.split('-').map(Number);
+  if (!a || !m || !d) return iso;
+  const fecha = new Date(a, m - 1, d);
+  fecha.setDate(fecha.getDate() - ((fecha.getDay() + 1) % 7));
+  return hoyISO(fecha);
+}
+
+/** Viernes en que termina la semana de esa fecha. */
+export function finSemana(valor) {
+  return sumarDias(inicioSemana(valor), 6);
+}
+
+/** Sábado en que se paga la semana de esa fecha. */
+export function diaDePago(valor) {
+  return sumarDias(inicioSemana(valor), 7);
+}
+
+/** '10/10/2026 al 16/10/2026' */
+export function etiquetaSemana(valor) {
+  const inicio = inicioSemana(valor);
+  return `${fecha(inicio)} al ${fecha(sumarDias(inicio, 6))}`;
+}
+
+/** '10–16 oct' (para gráficos) */
+export function etiquetaSemanaCorta(valor) {
+  const inicio = inicioSemana(valor);
+  const fin = sumarDias(inicio, 6);
+  const mes = MESES[Number(inicio.slice(5, 7)) - 1] ?? '';
+  return `${inicio.slice(8, 10)}–${fin.slice(8, 10)} ${mes.slice(0, 3)}`;
 }

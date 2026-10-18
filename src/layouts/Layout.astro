@@ -10,10 +10,11 @@ const estaConfigurado = Boolean(import.meta.env.PUBLIC_SUPABASE_URL && import.me
 const enlaces = [
   { href: '/', etiqueta: 'Tablero', icono: 'tablero', grupo: 'Resumen' },
   { href: '/trabajo', etiqueta: 'Registro diario', icono: 'documento', grupo: 'Producción' },
+  { href: '/horas', etiqueta: 'Trabajo por horas', icono: 'reloj', grupo: 'Producción' },
   { href: '/partidas', etiqueta: 'Partidas', icono: 'caja', grupo: 'Producción' },
   { href: '/registros', etiqueta: 'Registros', icono: 'lista', grupo: 'Producción' },
-  { href: '/pagos', etiqueta: 'Pagos', icono: 'dinero', grupo: 'Planilla' },
-  { href: '/personal', etiqueta: 'Personal', icono: 'personas', grupo: 'Planilla' },
+  { href: '/pagos', etiqueta: 'Planilla', icono: 'dinero', grupo: 'Pagos' },
+  { href: '/personal', etiqueta: 'Personal', icono: 'personas', grupo: 'Pagos' },
   { href: '/operaciones', etiqueta: 'Catálogo', icono: 'tijeras', grupo: 'Configuración' },
 ];
 
