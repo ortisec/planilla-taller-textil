@@ -81,7 +81,11 @@ contenido de cada archivo:
 1. `supabase/migrations/20261014120000_init.sql` → tablas, vistas, funciones y políticas.
 2. `supabase/migrations/20261015120000_avance_paquete.sql` → control de avance por paquete.
 3. `supabase/migrations/20261018120000_trabajo_horas.sql` → trabajo por horas y semanas.
-4. `supabase/seed.sql` → catálogo de operaciones, personal y partida de ejemplo (opcional).
+4. `supabase/seed.sql` → catálogo de operaciones, personal y partida de ejemplo (**solo para probar**).
+
+> 🚀 **Para producción no ejecutes `seed.sql`**: son datos de ejemplo. Si ya lo
+> corriste, ejecuta `supabase/limpiar.sql` para dejar todas las tablas en cero
+> (borra los datos, no la estructura).
 
 > Recuerda pegar el **contenido** del archivo, no la ruta. El SQL Editor no lee
 > archivos del repositorio.
@@ -173,6 +177,7 @@ planilla-taller-textil/
 │   │   └── 20261018120000_trabajo_horas.sql
 │   ├── config.toml
 │   ├── seed.sql
+│   ├── limpiar.sql
 │   └── verificar.sql
 ├── public/
 ├── .env.example
